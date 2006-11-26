@@ -1,0 +1,8 @@
+- 0.10 ... Module is now called InlineX::CPP2XS (previously Inline::CPP2XS, which is now
+           deprecated).
+           Now has the same capabilities as its C counterpart (InlineX::C2XS-0.10) - 
+           ie can also (optionally) autogenerate the Makefile.PL in addition to the other
+           files it has always been capable of generating (namely the .xs file, INLINE.h
+           and CPP.map).
+
+- 0.07 ... Inline::CPP2XS born (previously part of Inline::C2XS)
