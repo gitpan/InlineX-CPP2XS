@@ -2,7 +2,7 @@ use warnings;
 use strict;
 use InlineX::CPP2XS qw(cpp2xs);
 
-print "1..3\n";
+print "1..7\n";
 
 cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main');
 
@@ -157,3 +157,23 @@ close(RD2) or print "Unable to close expected_typemap.txt after reading: $!\n";
 if(!unlink('CPP.map')) { print "Couldn't unlink CPP.map\n"}
 
 print "ok 3\n";
+
+eval{cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main', '.', '');};
+
+if($@ =~ /Fourth arg to cpp2xs/) {print "ok 4\n"}
+else {print "not ok 4\n"}
+
+eval{cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main', {'TYPEMAPS' => ['/foo/non/existent/typemap.txt']});};
+
+if($@ =~ /Couldn't locate the typemap \/foo\/non\/existent\/typemap.txt/) {print "ok 5\n"}
+else {print "not ok 5\n"}
+
+eval{cpp2xs('Math::Geometry::Planar::GPC::Polygon', 'Math::Geometry::Planar::GPC::Polygon', '/foo/non/existent/typemap.txt');};
+
+if($@ =~ /\/foo\/non\/existent\/typemap\.txt is not a valid directory/) {print "ok 6\n"}
+else {print "not ok 6\n"}
+
+eval{cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'Math::Geometry::Planar::GPC::Inherit', {'typemaps' => ['/foo/non/existent/typemap.txt']});};
+
+if($@ =~ /is an invalid config option/) {print "ok 7\n"}
+else {print "not ok 7\n"}

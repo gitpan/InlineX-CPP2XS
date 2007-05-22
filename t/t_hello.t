@@ -4,7 +4,7 @@ use InlineX::CPP2XS qw(cpp2xs);
 
 print "1..1\n";
 
-cpp2xs('hello', 'hello', '.',
+cpp2xs('hello', 'hello',
        {PREFIX => 'remove_', BOOT => 'printf("Hi from bootstrap\n");'});
 
 if(!rename('hello.xs', 'hello.txt')) {
