@@ -2,7 +2,7 @@ use warnings;
 use strict;
 use InlineX::CPP2XS qw(cpp2xs);
 
-print "1..7\n";
+print "1..8\n";
 
 cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main');
 
@@ -177,3 +177,8 @@ eval{cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'Math::Geometry::Planar::GPC
 
 if($@ =~ /is an invalid config option/) {print "ok 7\n"}
 else {print "not ok 7\n"}
+
+eval{cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main', {'TYPEMAPS' => ['foo']}, {'TYPEMAPS' => ['foo']});};
+
+if($@ =~ /Incorrect usage \- there should be no arguments/) {print "ok 8\n"}
+else {print "not ok 8\n"}

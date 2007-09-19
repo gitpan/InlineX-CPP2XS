@@ -27,3 +27,4 @@ demos/cpp/Makefile.PL
 demos/cpp/test.pl
 demos/cpp/INLINE.h
 demos/cpp/src/Inherit.cpp
+META.yml
