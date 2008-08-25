@@ -36,165 +36,200 @@ my %config_opts = (
 
 cpp2xs('test', 'test', $build_dir, \%config_opts);
 
+my ($ok, $ok2) = (1, 1);
+my @rd1;
+my @rd2;
+
 if(!rename('src/test.xs', 'src/test.txt')) {
-  print "not ok 1 - couldn't rename src/test.xs\n";
-  exit;
+  warn "couldn't rename src/test.xs\n";
+  print "not ok 1\n";
+  $ok = 0;
 }
 
-my $ok = 1;
-
-if(!open(RD1, "src/test.txt")) {
-  print "not ok 1 - unable to open src/test.txt for reading: $!\n";
-  exit;
+if($ok) {
+  if(!open(RD1, "src/test.txt")) {
+    warn "unable to open src/test.txt for reading: $!\n";
+    print "not ok 1\n";
+    $ok = 0;
+  }
 }
 
-if(!open(RD2, "expected_autowrap.txt")) {
-  print "not ok 1 - unable to open expected_autowrap.txt for reading: $!\n";
-  exit;
+if($ok) {
+  if(!open(RD2, "expected_autowrap.txt")) {
+    warn "unable to open expected_autowrap.txt for reading: $!\n";
+    print "not ok 1\n";
+    $ok = 0;
+  }
 }
 
-my @rd1 = <RD1>;
-my @rd2 = <RD2>;
-
-if(scalar(@rd1) != scalar(@rd2)) {
-  print "not ok 1 - src/test.txt does not have the expected number of lines\n";
-  close(RD1) or print "Unable to close src/test.txt after reading: $!\n";
-  close(RD2) or print "Unable to close expected_autowrap.txt after reading: $!\n";
-  exit;
+if($ok) {
+  @rd1 = <RD1>;
+  @rd2 = <RD2>;
 }
 
-for(my $i = 0; $i < scalar(@rd1); $i++) {
-   # Try to take care of platform-specific issues with line endings.
-   $rd1[$i] =~ s/\n//g;
-   $rd2[$i] =~ s/\n//g;
-   $rd1[$i] =~ s/\r//g;
-   $rd2[$i] =~ s/\r//g;
-
-   if($rd1[$i] ne $rd2[$i]) {
-     print $i, "\n", $rd1[$i], "*\n", $rd2[$i], "*\n";
-     $ok = 0;
-     last;
-   }
+if($ok) {
+  if(scalar(@rd1) != scalar(@rd2)) {
+    warn "src/test.txt does not have the expected number of lines\n";
+    print "not ok 1\n";
+    $ok = 0;
+  }
 }
 
-if(!$ok) {
-  print "not ok 1 - src/test.txt does not match expected_autowrap.txt\n";
-  close(RD1) or print "Unable to close src/test.txt after reading: $!\n";
-  close(RD2) or print "Unable to close expected_autowrap.txt after reading: $!\n";
-  exit;
+if($ok) {
+  for(my $i = 0; $i < scalar(@rd1); $i++) {
+     # Try to take care of platform/machine-specific issues
+     # regarding line endings and whitespace.
+     $rd1[$i] =~ s/\s//g;
+     $rd2[$i] =~ s/\s//g;
+     #$rd1[$i] =~ s/\r//g;
+     #$rd2[$i] =~ s/\r//g;
+
+     if($rd1[$i] ne $rd2[$i]) {
+       warn "At line $i:\n     GOT:", $rd1[$i], "*\nEXPECTED:", $rd2[$i], "*\n";
+       $ok2 = 0;
+       last;
+     }
+  }
 }
 
-print "ok 1\n";
+if(!$ok2) {
+  warn "src/test.txt does not match expected_autowrap.txt\n";
+  print "not ok 1\n";
+}
 
-close(RD1) or print "Unable to close src/test.txt after reading: $!\n";
-close(RD2) or print "Unable to close expected_autowrap.txt after reading: $!\n";
-if(!unlink('src/test.txt')) { print "Couldn't unlink src/test.txt\n"}
+elsif($ok) {print "ok 1\n"}
 
-$ok = 1;
+close(RD1) or warn "Unable to close src/test.txt after reading: $!\n";
+close(RD2) or warn "Unable to close expected_autowrap.txt after reading: $!\n";
+if(!unlink('src/test.txt')) { warn "Couldn't unlink src/test.txt\n"}
+
+($ok, $ok2) = (1, 1);
 
 ###########################################################################
 
 if(!open(RD1, "src/INLINE.h")) {
-  print "not ok 2 - unable to open src/INLINE.h for reading: $!\n";
-  exit;
+  warn "unable to open src/INLINE.h for reading: $!\n";
+  print "not ok 2\n";
+  $ok = 0;
 }
 
-if(!open(RD2, "expected.h")) {
-  print "not ok 2 - unable to open expected.h for reading: $!\n";
-  exit;
+if($ok) {
+  if(!open(RD2, "expected.h")) {
+    warn "unable to open expected.h for reading: $!\n";
+    print "not ok 2\n";
+    $ok = 0;
+  }
 }
 
-@rd1 = <RD1>;
-@rd2 = <RD2>;
-
-if(scalar(@rd1) != scalar(@rd2)) {
-  print "not ok 2 - src/INLINE.h does not have the expected number of lines\n";
-  close(RD1) or print "Unable to close src/INLINE.h after reading: $!\n";
-  close(RD2) or print "Unable to close expected.h after reading: $!\n";
-  exit;
+if($ok) {
+  @rd1 = <RD1>;
+  @rd2 = <RD2>;
 }
 
-for(my $i = 0; $i < scalar(@rd1); $i++) {
-   # Try to take care of platform-specific issues with line endings.
-   $rd1[$i] =~ s/\n//g;
-   $rd2[$i] =~ s/\n//g;
-   $rd1[$i] =~ s/\r//g;
-   $rd2[$i] =~ s/\r//g;
-
-   if($rd1[$i] ne $rd2[$i]) {
-     $ok = 0;
-     last;
-   }
+if($ok) {
+  if(scalar(@rd1) != scalar(@rd2)) {
+    warn "src/INLINE.h does not have the expected number of lines\n";
+    print "not ok 2\n";
+    $ok = 0;
+  }
 }
 
-if(!$ok) {
-  print "not ok 2 - src/INLINE.h does not match expected.h\n";
-  close(RD1) or print "Unable to close src/INLINE.h after reading: $!\n";
-  close(RD2) or print "Unable to close expected.h after reading: $!\n";
-  exit;
+if($ok) {
+  for(my $i = 0; $i < scalar(@rd1); $i++) {
+     # Try to take care of platform/machine-specific issues
+     # regarding line endings and whitespace.
+     $rd1[$i] =~ s/\s//g;
+     $rd2[$i] =~ s/\s//g;
+     #$rd1[$i] =~ s/\r//g;
+     #$rd2[$i] =~ s/\r//g;
+
+     if($rd1[$i] ne $rd2[$i]) {
+       warn "At line $i:\n     GOT:", $rd1[$i], "*\nEXPECTED:", $rd2[$i], "*\n";
+       $ok2 = 0;
+       last;
+     }
+  }
 }
 
-close(RD1) or print "Unable to close src/INLINE.h after reading: $!\n";
-close(RD2) or print "Unable to close expected.h after reading: $!\n";
-if(!unlink('src/INLINE.h')) { print "Couldn't unlink src/INLINE.h\n"}
+if(!$ok2) {
+  warn "src/INLINE.h does not match expected.h\n";
+  print "not ok 2\n";
+}
 
-print "ok 2\n";
+elsif($ok) {print "ok 2\n"}
 
+close(RD1) or warn "Unable to close src/INLINE.h after reading: $!\n";
+close(RD2) or warn "Unable to close expected.h after reading: $!\n";
+if(!unlink('src/INLINE.h')) { warn "Couldn't unlink src/INLINE.h\n"}
+
+($ok, $ok2) = (1, 1);
 
 ###########################################################################
 
 if(!open(RD1, "src/Makefile.PL")) {
-  print "not ok 3 - unable to open src/Makefile.PL for reading: $!\n";
-  exit;
+  warn "unable to open src/Makefile.PL for reading: $!\n";
+  print "not ok 3\n";
+  $ok = 0;
 }
 
-$ok = 0;
-
-@rd1 = <RD1>;
+if($ok) {@rd1 = <RD1>}
 
 # Not sure how best to check that the generated Makefile.PL is ok.
 # In the meantime we have the following crappy checks. If it passes
 # these tests, it's probably ok ... otherwise it may not be.
 
-my ($line1, $line2, $line3, $line4, $line5, $line6, $line7, $line8, $line9, $line10, $line11,
-    $line12, $line13, $line14, $line15, $line16, $line17, $line18) = 
-   (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+my $res;
 
-for(@rd1) {
-   if ($_ =~ /use ExtUtils::MakeMaker;/) {$line1 = 1}
-   if ($_ =~ /my %options = %{/) {$line2 = 1}
-   if ($_ =~ /INC/ && $_ =~ / \-Isrc/) {$line3 = 1}
-   if ($_ =~ /NAME/ && $_ =~ /test/) {$line4 = 1}
-   if ($_ =~ /LIBS/) {$line5 = 1}
-   if ($_ =~ /\-L\/anywhere \-lbogus/) {$line6 = 1}
-   if ($_ =~ /TYPEMAPS/) {$line7 = 1}
-   if ($_ =~ /simple_typemap\.txt/) {$line8 = 1}
-   if ($_ =~ /VERSION/ && $_ =~ /0.42/) {$line9 = 1}
-   if ($_ =~ /WriteMakefile\(%options\);/) {$line10 = 1}
-   if ($_ =~ /sub MY::makefile { '' }/) {$line11 = 1}
-   if ($_ =~ /CC/ && $_ =~ /\Q$Config{cc}\E/) {$line12 = 1}
-   if ($_ =~ /CCFLAGS/ && $_ =~ /\s\-DMY_DEFINE/) {$line13 = 1}
-   if ($_ =~ /LD/ && $_ =~ /\Q$Config{ld}\E/) {$line14 = 1}
-   if ($_ =~ /LDDLFLAGS/) {$line15 = 1}
-   if ($_ =~ /MAKE/ && $_ =~ /\Q$Config{make}\E/) {$line16 = 1}
-   if ($_ =~ /MYEXTLIB/ && $_ =~ /MANIFEST/) {$line17 = 1}
-   if ($_ =~ /OPTIMIZE/ && $_ =~ /\-g/) {$line18 = 1}
+if($ok) {
+  for(@rd1) {
+     if ($_ =~ /use ExtUtils::MakeMaker;/) {$res .= 'a'}
+     if ($_ =~ /my %options =/) {$res .= 'b'}
+     if ($_ =~ /INC/) {$res .= 'c'}
+     if ($_ =~ /\-Isrc/) {$res .= 'd'}
+     if ($_ =~ /NAME/) {$res .= 'e'}
+     if ($_ =~ /test/) {$res .= 'f'}
+     if ($_ =~ /LIBS/) {$res .= 'g'}
+     if ($_ =~ /\-L\/anywhere \-lbogus/) {$res .= 'h'}
+     if ($_ =~ /TYPEMAPS/) {$res .= 'i'}
+     if ($_ =~ /simple_typemap\.txt/) {$res .= 'j'}
+     if ($_ =~ /VERSION/) {$res .= 'k'}
+     if ($_ =~ /0.42/) {$res .= 'l'}
+     if ($_ =~ /WriteMakefile\(%options\);/) {$res .= 'm'}
+     if ($_ =~ /sub MY::makefile { '' }/) {$res .= 'n'}
+     if ($_ =~ /CC/) {$res .= 'o'}
+     if ($_ =~ /\Q$Config{cc}\E/) {$res .= 'p'}
+     if ($_ =~ /CCFLAGS/) {$res .= 'q'}
+     if ($_ =~ /\s\-DMY_DEFINE/) {$res .= 'r'}
+     if ($_ =~ /LD/) {$res .= 's'}
+     if ($_ =~ /\Q$Config{ld}\E/) {$res .= 't'}
+     if ($_ =~ /LDDLFLAGS/) {$res .= 'u'}
+     if ($_ =~ /MAKE/) {$res .= 'v'}
+     if ($_ =~ /\Q$Config{make}\E/) {$res .= 'w'}
+     if ($_ =~ /MYEXTLIB/) {$res .= 'x'}
+     if ($_ =~ /MANIFEST/) {$res .= 'y'}
+     if ($_ =~ /OPTIMIZE/) {$res .= 'z'}
+     if ($_ =~ /\-g/) {$res .= 'A'}
+  }
 }
 
-if($line1 && $line2 && $line3 && $line4 && $line5 && $line6 && $line7 && $line8 && $line9 && $line10 && $line11
-   && $line12 && $line13 && $line14 && $line15 && $line16 && $line17 && $line18) {$ok = 1}
-
-if(!$ok) {
-  print "not ok 3 - src/Makefile.PL not properly created ", $line1, $line2, $line3, $line4, $line5, $line6, $line7, $line8, $line9, $line10, $line11,
-         $line12, $line13, $line14, $line15, $line16, $line17, $line18, "\n";
-  close(RD1) or print "Unable to close src/Makefile.PL after reading: $!\n";
-  exit;
+if($ok) {
+  for('a' .. 'z', 'A') {
+     if($res !~ $_) {
+       warn "'$_' is missing\n";
+       $ok2 = 0;
+     }
+  }
 }
 
-close(RD1) or print "Unable to close src/Makefile.PL after reading: $!\n";
-if(!unlink('src/Makefile.PL')) { print "Couldn't unlink src/Makefile.PL\n"}
+if(!$ok2) {
+  warn "$res\n";
+  print "not ok 3\n";
+}
 
-print "ok 3\n";
+elsif($ok) {print "ok 3\n"}
+
+close(RD1) or warn "Unable to close src/Makefile.PL after reading: $!\n";
+if(!unlink('src/Makefile.PL')) { warn "Couldn't unlink src/Makefile.PL\n"}
 
 $ok = '';
 
@@ -222,13 +257,16 @@ if($ok eq 'a') {
   $ok .= 'm' if $pm[14] eq "sub dl_load_flags {0} # Prevent DynaLoader from complaining and croaking\n";
   $ok .= 'n' if $pm[15] eq "\n";
   $ok .= 'o' if $pm[16] eq "1;\n";
-  eval{close(RD);};
+  eval{close(RD) or die $!;};
   if(!$@) {$ok .= 'p'}
-  else {print $@, "\n"}
+  else {warn $@, "\n"}
 }
 
-if(!unlink('src/test.pm')) { print "Couldn't unlink src/test.pm\n"}
+if(!unlink('src/test.pm')) { warn "Couldn't unlink src/test.pm\n"}
 
 if($ok eq 'abcCdefghijJklLmnop') {print "ok 4\n"}
-else {print "not ok 4 $ok\n"}
+else {
+  warn $ok, "\n";
+  print "not ok 4\n";
+}
 

@@ -6,8 +6,6 @@ OUTPUT
 O_Inline_CPP_Class
     sv_setref_pv( $arg, CLASS, (void*)$var );
 
-
-
 INPUT
 O_Inline_CPP_Class
     if (sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG)) {
@@ -17,6 +15,4 @@ O_Inline_CPP_Class
         warn ( \"${Package}::$func_name() -- $var is not a blessed reference\" );
         XSRETURN_UNDEF;
     }
-
-
 

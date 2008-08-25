@@ -9,30 +9,31 @@ my %config_opts = (
                   'AUTO_INCLUDE' => '#include <simple.h>' . "\n" .'#include "src/extra_simple.h"',
                   'TYPEMAPS' => ['src/simple_typemap.txt'],
                   'INC' => '-Isrc',
+                  'SRC_LOCATION' => './src/test.alt',
                   );
 
-cpp2xs('test', 'test', '.', \%config_opts);
+cpp2xs('testc', 'testc', '.', \%config_opts);
 
 my ($ok, $ok2) = (1, 1);
 my @rd1;
 my @rd2;
 
-if(!rename('test.xs', 'test_cpp.txt')) {
-  warn "couldn't rename test.xs\n";
+if(!rename('testc.xs', 'testc_cpp.txt')) {
+  warn "couldn't rename testc.xs\n";
   print "not ok 1\n";
   $ok = 0;
 }
 
 if($ok) {
-  if(!open(RD1, "test_cpp.txt")) {
-    warn "unable to open test_cpp.txt for reading: $!\n";
+  if(!open(RD1, "testc_cpp.txt")) {
+    warn "unable to open testc_cpp.txt for reading: $!\n";
     print "not ok 1\n";
     $ok = 0;
   }
 }
 
 if($ok) {
-  if(!open(RD2, "expected_autowrap.txt")) {
+  if(!open(RD2, "expected_autowrap_c.txt")) {
     warn "unable to open expected_autowrap.txt for reading: $!\n";
     print "not ok 1\n";
     $ok = 0;
@@ -46,7 +47,7 @@ if($ok) {
 
 if($ok) {
   if(scalar(@rd1) != scalar(@rd2)) {
-    warn "test_cpp.txt does not have the expected number of lines\n";
+    warn "testc_cpp.txt does not have the expected number of lines\n";
     print "not ok 1\n";
     $ok = 0;
   }
@@ -70,15 +71,15 @@ if($ok) {
 }
 
 if(!$ok2) {
-  warn "test_cpp.txt does not match expected_autowrap.txt\n";
+  warn "testc_cpp.txt does not match expected_autowrap.txt\n";
   print "not ok 1\n";
 }
 
 elsif($ok) {print "ok 1\n"}
 
-close(RD1) or warn "Unable to close test_cpp.txt after reading: $!\n";
+close(RD1) or warn "Unable to close testc_cpp.txt after reading: $!\n";
 close(RD2) or warn "Unable to close expected_autowrap.txt after reading: $!\n";
-if(!unlink('test_cpp.txt')) { warn "Couldn't unlink test_cpp.txt\n"}
+if(!unlink('testc_cpp.txt')) { warn "Couldn't unlink testc_cpp.txt\n"}
 
 ($ok, $ok2) = (1, 1);
 

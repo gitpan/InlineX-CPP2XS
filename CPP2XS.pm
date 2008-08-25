@@ -9,7 +9,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw(cpp2xs);
 
-our $VERSION = 0.12;
+our $VERSION = 0.13;
 
 sub cpp2xs {
     ## This is basically just a copy'n'paste of the InlineX::C2XS::c2xs() function,
@@ -56,12 +56,30 @@ sub cpp2xs {
     my $code = '';
     my $o;
 
-    open(RD, "<", "src/$modfname.cpp") or die "Can't open src/${modfname}.cpp for reading: $!";
-    while(<RD>) { 
-         $code .= $_;
-         if($_ =~ /inline_stack_vars/i) {$need_inline_h = 1}
+    if(exists($config_options->{CODE}) && exists($config_options->{SRC_LOCATION})) {
+      die "You can provide either CODE *or* SRC_LOCATION arguments ... but not *both*";
     }
-    close(RD) or die "Can't close src/$modfname.cpp after reading: $!";
+
+    if(exists($config_options->{CODE})) {
+      $code = $config_options->{CODE};
+      if($code =~ /inline_stack_vars/i) {$need_inline_h = 1 }
+    }
+    elsif(exists($config_options->{SRC_LOCATION})) {
+      open(RD, "<", $config_options->{SRC_LOCATION}) or die "Can't open ", $config_options->{SRC_LOCATION}, " for reading: $!";
+      while(<RD>) { 
+           $code .= $_;
+           if($_ =~ /inline_stack_vars/i) {$need_inline_h = 1}
+      }
+      close(RD) or die "Can't close ", $config_options->{SRC_LOCATION}, " after reading: $!";
+    }
+    else {
+      open(RD, "<", "src/$modfname.cpp") or die "Can't open src/${modfname}.cpp for reading: $!";
+      while(<RD>) { 
+           $code .= $_;
+           if($_ =~ /inline_stack_vars/i) {$need_inline_h = 1}
+      }
+      close(RD) or die "Can't close src/$modfname.cpp after reading: $!";
+    }
 
     ## Initialise $o.
     ## Many of these keys may not be needed for the purpose of this
@@ -124,7 +142,7 @@ sub cpp2xs {
     if($config_options->{TYPEMAPS}) {
       unless(ref($config_options->{TYPEMAPS}) eq 'ARRAY') {die "TYPEMAPS must be passed as an array reference"}
       for(@{$config_options->{TYPEMAPS}}) {
-         die "Couldn't locate the typemap $_" unless -e $_;
+         die "Couldn't locate the typemap $_" unless -f $_;
       }
       $o->{ILSM}{MAKEFILE}{TYPEMAPS} = $config_options->{TYPEMAPS}; 
     }
@@ -172,7 +190,7 @@ sub cpp2xs {
 
     if($config_options->{WRITE_MAKEFILE_PL}) {
       if($config_options->{VERSION}) {$o->{API}{version} = $config_options->{VERSION}}
-      else {warn "'VERSION' being set to '0.00' in the Makefile.PL. Did you supply a correct version number to c2xs() ?"}
+      else {warn "'VERSION' being set to '0.00' in the Makefile.PL. Did you supply a correct version number to cpp2xs() ?"}
       print "Writing Makefile.PL in the ", $o->{API}{build_dir}, " directory\n";
       $o->call('write_Makefile_PL', 'Build Glue 3');
     }
@@ -180,7 +198,7 @@ sub cpp2xs {
     if($config_options->{WRITE_PM}) {
       if($config_options->{VERSION}) {$o->{API}{version} = $config_options->{VERSION}}
       else {
-        warn "'\$VERSION' being set to '0.00' in ", $o->{API}{modfname}, ".pm. Did you supply a correct version number to c2xs() ?";
+        warn "'\$VERSION' being set to '0.00' in ", $o->{API}{modfname}, ".pm. Did you supply a correct version number to cpp2xs() ?";
         $o->{API}{version} = '0.00';
       }
     _write_pm($o);
@@ -206,7 +224,7 @@ sub _build {
 sub _check_config_keys {
     for('AUTOWRAP', 'AUTO_INCLUDE', 'TYPEMAPS', 'LIBS', 'INC', 'VERSION', 'WRITE_MAKEFILE_PL',
         'BUILD_NOISY', 'BOOT', 'MAKE', 'PREFIX', 'CCFLAGS', 'LD', 'LDDLFLAGS', 'MYEXTLIB', 
-        'OPTIMIZE', 'CC', 'USING', 'WRITE_PM')
+        'OPTIMIZE', 'CC', 'USING', 'WRITE_PM', 'CODE', 'SRC_LOCATION')
        {return 1 if $_ eq $_[0]} # it's a valid config option
     return 0;                    # it's an invalid config option
 }
@@ -216,12 +234,12 @@ sub _write_pm {
     open(WR, '>', $o->{API}{build_dir} . '/' . $o->{API}{modfname} . ".pm")
         or die "Couldn't create the .pm file: $!";
     print "Writing ", $o->{API}{modfname}, ".pm in the ", $o->{API}{build_dir}, " directory\n";
-    print WR "package ", $o->{API}{pkg}, ";\nuse strict;\n\n";
+    print WR "package ", $o->{API}{module}, ";\nuse strict;\n\n";
     print WR "require Exporter;\n*import = \\&Exporter::import;\nrequire DynaLoader;\n\n";
-    print WR "\$", $o->{API}{pkg}, "::VERSION = '", $o->{API}{version}, "';\n\n"; 
-    print WR "DynaLoader::bootstrap ", $o->{API}{pkg}, " \$", $o->{API}{pkg}, "::VERSION;\n\n";
-    print WR "\@", $o->{API}{pkg}, "::EXPORT = ();\n";
-    print WR "\@", $o->{API}{pkg}, "::EXPORT_OK = ();\n\n";
+    print WR "\$", $o->{API}{module}, "::VERSION = '", $o->{API}{version}, "';\n\n"; 
+    print WR "DynaLoader::bootstrap ", $o->{API}{module}, " \$", $o->{API}{module}, "::VERSION;\n\n";
+    print WR "\@", $o->{API}{module}, "::EXPORT = ();\n";
+    print WR "\@", $o->{API}{module}, "::EXPORT_OK = ();\n\n";
     print WR "sub dl_load_flags {0} # Prevent DynaLoader from complaining and croaking\n\n";
     print WR "1;\n";
     close(WR) or die "Couldn't close the .pm file after writing to it: $!";
@@ -259,8 +277,18 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
   # if that file is going to be needed to build the module:
   cpp2xs($module_name, $package_name, $build_dir);
 
-  # Or create XS_MOD.xs (and CPP.map, if needed) in the cwd:
+  # Alternatively create XS_MOD.xs (and CPP.map, if needed) in 
+  # the cwd:
   cpp2xs($module_name, $package_name);
+
+  # Or Create /some/where/else/XS_MOD.xs from $code
+  $code = 'void foo() {printf("Hello World\n");}';
+  cpp2xs($module_name, $package_name, $build_dir, {CODE => $code});
+
+  # Or Create /some/where/else/XS_MOD.xs from the C code that's in
+  # ./otherplace/otherfile.ext
+  $loc = './otherplace/otherfile.ext';
+  cpp2xs($module_name, $package_name, $build_dir, {SRC_LOCATION => $loc});
 
   The optional fourth arg (a reference to a hash) is to enable the
   passing of additional information and configuration options that
@@ -282,7 +310,7 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
   hash reference containing the additional config options).
 
 =head1 DESCRIPTION
- 
+
  Don't feed an actual Inline::CPP script to this module - it won't
  be able to parse it. It is capable of parsing correctly only
  that CPP code that is suitable for inclusion in an Inline::CPP
@@ -314,6 +342,7 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
       printf("Hello world\n");
   }
 
+ If the CPP code is not provided by either the CODE or SRC_LOCATION keys,
  InlineX::CPP2XS looks for the source file in ./src directory - expecting
  that the filename will be the same as what appears after the final '::'
  in the module name (with a '.cpp' extension). ie if your module is
@@ -354,7 +383,7 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
   ----
 
  BOOT
-   Specifies C code to be executed in the XS BOOT section. Corresponds
+   Specifies C/CPP code to be executed in the XS BOOT section. Corresponds
    to the XS parameter. eg:
 
     BOOT => 'printf("Hello .. from bootstrap\n");',
@@ -380,6 +409,12 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
    key only when WRITE_MAKEFILE_PL is set to a true value. eg:
 
     CCFLAGS => '-DMY_DEFINE ' . $Config{ccflags},
+  ----
+
+  CODE
+   A string containing the CPP code. eg:
+
+    CODE => 'void foo() {printf("Hello World\n";}',
   ----
 
   INC
@@ -442,6 +477,12 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
     PREFIX => 'FOO_',
   ----
 
+  SRC_LOCATION
+   Specifies a C file that contains the CPP source code. eg:
+
+    SRC_LOCATION => '/home/me/source.ext',
+  ----
+
   TYPEMAPS
    The value(s) specified are added to the list of typemaps.
    (Must be an array reference.) eg:
@@ -486,10 +527,14 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
   None known - patches/rewrites/enhancements welcome.
   Send to sisyphus at cpan dot org
 
-=head1 COPYRIGHT
+=head1 LICENSE
 
-  Copyright Sisyphus. You can do whatever you want with this code.
-  It comes without any guarantee or warranty.
+    This perl code is free software; you may redistribute it
+    and/or modify it under the same terms as Perl itself.
+
+=head1 AUTHOR
+
+    Sisyphus <sisyphus at(@) cpan dot (.) org>
 
 =cut
 

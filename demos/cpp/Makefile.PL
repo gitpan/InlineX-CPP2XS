@@ -2,16 +2,15 @@ use ExtUtils::MakeMaker;
 my %options = %{       
 {
   'TYPEMAPS' => [
-    'F:\\Perl58_M\\5.8.8\\lib\\ExtUtils\\typemap',
-    'CPP.map',
-    'F:\\InlineX-C2XS\\InlineX-CPP2XS-0.10\\demos\\cpp\\CPP.map'
+    'C:\\perl58_M\\lib\\ExtUtils\\typemap',
+    'C:\\_32\\working\\inlinex-cpp2xs\\InlineX-CPP2XS-0.13\\demos\\cpp\\CPP.map'
   ],
   'NAME' => 'Math::Geometry::Planar::GPC::Inherit',
   'CC' => 'g++',
   'LIBS' => [
     '-lstdc++'
   ],
-  'INC' => '-IF:/InlineX-C2XS/InlineX-CPP2XS-0.10/demos/cpp',
+  'INC' => '-IC:/_32/working/inlinex-cpp2xs/InlineX-CPP2XS-0.13/demos/cpp',
   'VERSION' => '0.11'
 }
 };
