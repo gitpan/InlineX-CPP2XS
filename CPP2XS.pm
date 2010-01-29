@@ -1,7 +1,6 @@
 package InlineX::CPP2XS;
 use warnings;
 use strict;
-use Carp;
 use Config;
 
 require Exporter;
@@ -9,7 +8,17 @@ our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw(cpp2xs);
 
-our $VERSION = 0.13;
+our $VERSION = 0.15;
+
+my $config_options =
+       {
+       'AUTOWRAP' => 0,
+       'AUTO_INCLUDE' => '',
+       'LIBS' => [],
+       'VERSION' => 0,
+       'WRITE_MAKEFILE_PL' => 0,
+       'WRITE_PM' => 0,
+       };
 
 sub cpp2xs {
     ## This is basically just a copy'n'paste of the InlineX::C2XS::c2xs() function,
@@ -19,21 +28,10 @@ sub cpp2xs {
     my $module = shift;
     my $pkg = shift;
 
-    # Set the defaults for $build_dir and $config_options.
-    # (These will be overwritten by any supplied arguments.)
-    my ($build_dir, $config_options) = (
-       '.', 
-       {
-       'AUTOWRAP' => 0,
-       'AUTO_INCLUDE' => '',
-       'TYPEMAPS' => [],
-       'LIBS' => [],
-       'INC' => '',
-       'VERSION' => 0,
-       'WRITE_MAKEFILE_PL' => 0,
-       'WRITE_PM' => 0,
-       }
-                                        );
+    # Set the default for $build_dir.
+    # (This will be overwritten by the build_dir argument in @_, if supplied.)
+    my $build_dir = '.'; 
+
     
     if(@_) {
       if(ref($_[0]) eq "HASH") {
@@ -139,18 +137,32 @@ sub cpp2xs {
     # Not sure that this achieves anything in the context of InlineX::CPP2XS.
     if($config_options->{MAKE}) {$o->{ILSM}{MAKE} = $config_options->{MAKE}}
 
-    if($config_options->{TYPEMAPS}) {
-      unless(ref($config_options->{TYPEMAPS}) eq 'ARRAY') {die "TYPEMAPS must be passed as an array reference"}
-      for(@{$config_options->{TYPEMAPS}}) {
-         die "Couldn't locate the typemap $_" unless -f $_;
+    if(exists($config_options->{TYPEMAPS})) {
+      if(ref($config_options->{TYPEMAPS}) eq 'ARRAY') {
+        for(@{$config_options->{TYPEMAPS}}) {
+           die "Couldn't locate the typemap $_" unless -f $_;
+        }
+        $o->{ILSM}{MAKEFILE}{TYPEMAPS} = $config_options->{TYPEMAPS};
       }
-      $o->{ILSM}{MAKEFILE}{TYPEMAPS} = $config_options->{TYPEMAPS}; 
+      else {
+        my @vals = split /\s+/, $config_options->{TYPEMAPS};
+        for(@vals) {
+           die "Couldn't locate the typemap $_" unless -f $_;
+        }
+        $o->{ILSM}{MAKEFILE}{TYPEMAPS} = \@vals; 
+      }
+    }
+    else {
+      $o->{ILSM}{MAKEFILE}{TYPEMAPS} = [];
     }
 
+    my @uncorrupted_typemaps = @{$o->{ILSM}{MAKEFILE}{TYPEMAPS}};
+    push @uncorrupted_typemaps, 'CPP.map';
+
     if($config_options->{LIBS}) {
-      unless(ref($config_options->{LIBS}) eq 'ARRAY') {die "LIBS must be passed as an array reference"}
       $o->{ILSM}{MAKEFILE}{LIBS} = $config_options->{LIBS}
     }
+    else { $o->{ILSM}{MAKEFILE}{LIBS} = []}
 
     if($config_options->{PREFIX}) {$o->{ILSM}{XS}{PREFIX} = $config_options->{PREFIX}}
 
@@ -164,7 +176,13 @@ sub cpp2xs {
 
     if($config_options->{CCFLAGS}) {$o->{ILSM}{MAKEFILE}{CCFLAGS} = " " . $config_options->{CCFLAGS}}
 
-    if($config_options->{INC}) {$o->{ILSM}{MAKEFILE}{INC} .= " $config_options->{INC}"}
+    if(exists($config_options->{INC})) {
+      if(ref($config_options->{INC}) eq 'ARRAY') {$o->{ILSM}{MAKEFILE}{INC} = join ' ', @{$config_options->{INC}};}
+      else {$o->{ILSM}{MAKEFILE}{INC} = $config_options->{INC};}
+    }
+    else {$o->{ILSM}{MAKEFILE}{INC} = ''}
+
+    my $uncorrupted_inc = $o->{ILSM}{MAKEFILE}{INC};
 
     if($config_options->{LD}) {$o->{ILSM}{MAKEFILE}{LD} = " " . $config_options->{LD}}
 
@@ -179,8 +197,13 @@ sub cpp2xs {
     if($config_options->{OPTIMIZE}) {$o->{ILSM}{MAKEFILE}{OPTIMIZE} = " " . $config_options->{OPTIMIZE}}
 
     if($config_options->{USING}) {
-      unless(ref($config_options->{USING}) eq 'ARRAY') {die "USING must be passed as an array reference"}
-      $o->{CONFIG}{USING} = $config_options->{USING};
+      my $val = $config_options->{USING};
+      if(ref($val) eq 'ARRAY') {
+        $o->{CONFIG}{USING} = $val;
+      }
+      else {
+        $o->{CONFIG}{USING} = [$val];
+      }
       Inline::push_overrides($o);
     }
 
@@ -189,6 +212,8 @@ sub cpp2xs {
     _build($o, $need_inline_h);
 
     if($config_options->{WRITE_MAKEFILE_PL}) {
+     $o->{ILSM}{MAKEFILE}{INC}= $uncorrupted_inc; # Otherwise cwd is automatically added.
+      $o->{ILSM}{MAKEFILE}{TYPEMAPS}= \@uncorrupted_typemaps; # Otherwise standard perl typemap is added.
       if($config_options->{VERSION}) {$o->{API}{version} = $config_options->{VERSION}}
       else {warn "'VERSION' being set to '0.00' in the Makefile.PL. Did you supply a correct version number to cpp2xs() ?"}
       print "Writing Makefile.PL in the ", $o->{API}{build_dir}, " directory\n";
@@ -223,23 +248,86 @@ sub _build {
 
 sub _check_config_keys {
     for('AUTOWRAP', 'AUTO_INCLUDE', 'TYPEMAPS', 'LIBS', 'INC', 'VERSION', 'WRITE_MAKEFILE_PL',
-        'BUILD_NOISY', 'BOOT', 'MAKE', 'PREFIX', 'CCFLAGS', 'LD', 'LDDLFLAGS', 'MYEXTLIB', 
-        'OPTIMIZE', 'CC', 'USING', 'WRITE_PM', 'CODE', 'SRC_LOCATION')
+        'BUILD_NOISY', 'BOOT', 'EXPORT_ALL', 'EXPORT_OK_ALL', 'EXPORT_TAGS_ALL', 'MAKE',
+        'PREFIX', 'CCFLAGS', 'LD', 'LDDLFLAGS', 'MYEXTLIB', 'OPTIMIZE', 'CC', 'USING',
+        'WRITE_PM', 'CODE', 'SRC_LOCATION')
        {return 1 if $_ eq $_[0]} # it's a valid config option
     return 0;                    # it's an invalid config option
 }
 
 sub _write_pm {
     my $o = shift;
+    my $offset = 4;
+    my $max = 100;
+    my $length = $offset;
+
     open(WR, '>', $o->{API}{build_dir} . '/' . $o->{API}{modfname} . ".pm")
         or die "Couldn't create the .pm file: $!";
     print "Writing ", $o->{API}{modfname}, ".pm in the ", $o->{API}{build_dir}, " directory\n";
+    print WR "## This file generated by InlineX::CPP2XS (version ",
+             $InlineX::CPP2XS::VERSION, ") using Inline::CPP (version ", $Inline::CPP::VERSION, ")\n";
     print WR "package ", $o->{API}{module}, ";\nuse strict;\n\n";
     print WR "require Exporter;\n*import = \\&Exporter::import;\nrequire DynaLoader;\n\n";
     print WR "\$", $o->{API}{module}, "::VERSION = '", $o->{API}{version}, "';\n\n"; 
     print WR "DynaLoader::bootstrap ", $o->{API}{module}, " \$", $o->{API}{module}, "::VERSION;\n\n";
-    print WR "\@", $o->{API}{module}, "::EXPORT = ();\n";
-    print WR "\@", $o->{API}{module}, "::EXPORT_OK = ();\n\n";
+
+    unless($config_options->{EXPORT_ALL}) {
+      print WR "\@", $o->{API}{module}, "::EXPORT = ();\n";
+    }
+    else {
+      print WR "\@", $o->{API}{module}, "::EXPORT = qw(\n";
+      for(@{$o->{ILSM}{parser}{data}{functions}}) {
+        if ($_ =~ /^_/ && $_ !~ /^__/) {next} 
+        my $l = length($_);
+        if($length + $l > $max) {
+          print WR "\n", " " x $offset, "$_ ";
+          $length = $offset + $l + 1;
+        }
+        if($length == $offset) {print WR " " x $offset, "$_ "}
+        else {print WR "$_ " }
+        $length += $l + 1;
+      }
+      print WR "\n", " " x $offset, ");\n\n";
+      $length = $offset;
+    }
+
+    unless($config_options->{EXPORT_OK_ALL}) {
+      print WR "\@", $o->{API}{module}, "::EXPORT_OK = ();\n\n";
+    }
+    else {
+      print WR "\@", $o->{API}{module}, "::EXPORT_OK = qw(\n";
+      for(@{$o->{ILSM}{parser}{data}{functions}}) {
+        if ($_ =~ /^_/ && $_ !~ /^__/) {next} 
+        my $l = length($_);
+        if($length + $l > $max) {
+          print WR "\n", " " x $offset, "$_ ";
+          $length = $offset + $l + 1;
+        }
+        if($length == $offset) {print WR " " x $offset, "$_ "}
+        else {print WR "$_ " }
+        $length += $l + 1;
+      }
+      print WR "\n", " " x $offset, ");\n\n";
+      $length = $offset;
+    }
+
+    if($config_options->{EXPORT_TAGS_ALL}){
+      print WR "\%", $o->{API}{module}, "::EXPORT_TAGS = (", $config_options->{EXPORT_TAGS_ALL}, " => [qw(\n";
+      for(@{$o->{ILSM}{parser}{data}{functions}}) {
+        if ($_ =~ /^_/ && $_ !~ /^__/) {next} 
+        my $l = length($_);
+        if($length + $l > $max) {
+          print WR "\n", " " x $offset, "$_ ";
+          $length = $offset + $l + 1;
+        }
+        if($length == $offset) {print WR " " x $offset, "$_ "}
+        else {print WR "$_ " }
+        $length += $l + 1;
+      }
+      print WR "\n", " " x $offset, ")]);\n\n";
+      $length = $offset;
+    }
+
     print WR "sub dl_load_flags {0} # Prevent DynaLoader from complaining and croaking\n\n";
     print WR "1;\n";
     close(WR) or die "Couldn't close the .pm file after writing to it: $!";
@@ -282,7 +370,7 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
   cpp2xs($module_name, $package_name);
 
   # Or Create /some/where/else/XS_MOD.xs from $code
-  $code = 'void foo() {printf("Hello World\n");}';
+  $code = 'void foo() {printf("Hello World\n");}' . "\n\n";
   cpp2xs($module_name, $package_name, $build_dir, {CODE => $code});
 
   # Or Create /some/where/else/XS_MOD.xs from the C code that's in
@@ -364,7 +452,7 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
 =head1 Recognised Hash Keys
 
  As regards the optional fourth argument to cpp2xs(), the following hash
- keys are recognised:
+ keys/values are recognised:
 
   AUTO_INCLUDE
    The value specified is automatically inserted into the generated XS
@@ -376,8 +464,7 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
 
   AUTOWRAP
    Set this to a true value to enable Inline::CPP's AUTOWRAP capability.
-   (There's no point in specifying a false value, as "false" is the 
-   default anyway.) eg:
+   eg:
 
     AUTOWRAP => 1,
   ----
@@ -414,7 +501,33 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
   CODE
    A string containing the CPP code. eg:
 
-    CODE => 'void foo() {printf("Hello World\n";}',
+    CODE => 'void foo() {printf("Hello World\n");}' . "\n\n",
+  ----
+
+  EXPORT_ALL
+   Makes no sense to use this unless WRITE_PM has been set.
+   Places all XSubs except those beginning with a *single* underscore (but not
+   multiple underscores) in @EXPORT in the generated .pm file. eg:
+
+    EXPORT_ALL => 1,
+  ----
+
+  EXPORT_OK_ALL
+   Makes no sense to use this unless WRITE_PM has been set.
+   Places all XSubs except those beginning with a *single* underscore (but not
+   multiple underscores) in @EXPORT_OK in the generated .pm file. eg:
+
+    EXPORT_OK_ALL => 1,
+  ----
+
+  EXPORT_TAGS_ALL
+   Makes no sense to use this unless WRITE_PM has been set.
+   In the generated .pm file, creates an EXPORT_TAGS tag named 'name'
+   (where 'name' is whatever you have specified), and places all XSubs except
+   those beginning with a *single* underscore (but not multiple underscores)
+   in 'name'. eg, the following creates and fills a tag named 'all':
+
+    EXPORT_TAGS_ALL => 'all',
   ----
 
   INC
@@ -422,7 +535,8 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
    sense to assign this key only when AUTOWRAP and/or WRITE_MAKEFILE_PL
    are set to a true value. eg:
 
-    INC => '-I/my/includes/dir',
+    INC => '-I/my/includes/dir -I/other/includes/dir',
+    INC => ['-I/my/includes/dir', '-I/other/includes/dir'],
   ----
 
   LD
@@ -443,8 +557,9 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
   LIBS
    The value(s) specified become the LIBS search path. It makes sense
    to assign this key only if WRITE_MAKEFILE_PL is set to a true value.
-   (Must be an array reference.) eg
-   
+   eg:
+ 
+    LIBS => '-L/somewhere -lsomelib -L/elsewhere -lotherlib',
     LIBS => ['-L/somewhere -lsomelib', '-L/elsewhere -lotherlib'],
   ----
 
@@ -485,16 +600,19 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
 
   TYPEMAPS
    The value(s) specified are added to the list of typemaps.
-   (Must be an array reference.) eg:
+   eg:
 
     TYPEMAPS =>['my_typemap', 'my_other_typemap'],
+    TYPEMAPS =>'my_typemap my_other_typemap',
   ----
 
   USING
-   If you want Inline to use ParseRegExp.pm instead of RecDescent.pm for 
-   the parsing, then specify:
+    With Inline::C, enables use of an alternative parser. But with
+    Inline::CPP, there is currently no alternative parser available.
 
-    USING => ['ParseRegExp'],
+    USING => ['ParseRegExp'], # fails on Inline::CPP & InlineX::CPP2XS.
+    or
+    USING => 'ParseRegExp', # fails on Inline::CPP & InlineX::CPP2XS.
   ----
 
   VERSION
@@ -507,9 +625,8 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
 
   WRITE_MAKEFILE_PL
    Set this to to a true value if you want the Makefile.PL to be
-   generated. (There's no point in specifying a false value, as "false"
-   is the default anyway. You should also assign the 'VERSION' key to 
-   the correct value when WRITE_MAKEFILE_PL is set.) eg:
+   generated. (You should also assign the 'VERSION' key to the
+   correct value when WRITE_MAKEFILE_PL is set.) eg:
     
     WRITE_MAKEFILE_PL => 1,
   ----
@@ -518,23 +635,27 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
    Set this to a true value if you want a .pm file to be generated.
    You'll also need to assign the 'VERSION' key appropriately. 
    Note that it's a fairly simplistic .pm file - no POD, no perl 
-   subroutines, no Exporter, no warnings - but it will allow the 
-   utilisation of all of the XSubs in the XS file.
+   subroutines, no exported subs (unless EXPORT_ALL or EXPORT_OK_ALL
+   has been set), no warnings - but it will allow the utilisation of all of
+   the XSubs in the XS file. eg:
+
+    WRITE_PM => 1,
   ----
 
 =head1 BUGS
 
-  None known - patches/rewrites/enhancements welcome.
-  Send to sisyphus at cpan dot org
+   None known - patches/rewrites/enhancements welcome.
+   Send to sisyphus at cpan dot org
 
 =head1 LICENSE
 
-    This perl code is free software; you may redistribute it
-    and/or modify it under the same terms as Perl itself.
+   This program is free software; you may redistribute it and/or 
+   modify it under the same terms as Perl itself.
+   Copyright 2006-2009, Sisyphus
 
 =head1 AUTHOR
 
-    Sisyphus <sisyphus at(@) cpan dot (.) org>
+   Sisyphus <sisyphus at(@) cpan dot (.) org>
 
 =cut
 

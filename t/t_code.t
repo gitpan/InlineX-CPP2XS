@@ -4,7 +4,7 @@ use InlineX::CPP2XS qw(cpp2xs);
 
 print "1..2\n";
 
-my $code = "simple_double  simple(simple_double);\nextra_simple_double x_simple(extra_simple_double);";
+my $code = "simple_double  simple(simple_double);\nextra_simple_double x_simple(extra_simple_double);\n\n";
 
 my %config_opts = (
                   'AUTOWRAP' => 1,

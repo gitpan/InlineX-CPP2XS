@@ -1,5 +1,5 @@
-Inherit.xs, Makefile.PL, INLINE.h and CPP.map were produced by cd'ing to this
-(ie demos/cpp) directory and running the following one liner:
+Inherit.xs, Inherit.pm, Makefile.PL, INLINE.h and CPP.map were produced by
+cd'ing to this (ie demos/cpp) directory and running the following one liner:
 
 perl -MInlineX::CPP2XS -e "InlineX::CPP2XS::cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main',  '.', {WRITE_MAKEFILE_PL => 1, VERSION => 0.11, CC => 'g++', WRITE_PM => 1})"
 
@@ -10,10 +10,10 @@ That one liner is as run in a typical Windows shell. For a typical nix shell you
 need to interchange the double-quotes and the single-quotes.
 
 For the purposes of providing a complete example of what is needed, I've 
-also included, in this directory (ie 'demos/cpp'), a hand written pm file, a 
-MANIFEST, a README (this file) and a test file (test.pl).
+also included, in this directory (ie 'demos/cpp'), a MANIFEST, a README (this file)
+and a test file (test.pl).
 
-Probably worth removing Inherit.pm Inherit.xs, Makefile.PL, CPP.map and INLINE.h, 
+Probably worth removing Inherit.pm, Inherit.xs, Makefile.PL, CPP.map and INLINE.h, 
 then running the above one liner for yourself - just to verify that everything 
 works properly for you.
 
@@ -29,9 +29,6 @@ You would even be able to then successfully run 'make install' - though,
 given that this module doesn't really do anything useful, I don't know why
 anyone would want to install it. It's also quite ludicrous to be creating
 Inherit.pm in the Math::Geometry::Planar::GPC namespace.
-
-Anyway, this demo works fine for me on Win32 using the MinGW's g++
-compiler and MinGW-built perl 5.8.8.
 
 Cheers,
 Rob

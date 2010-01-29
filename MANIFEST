@@ -6,6 +6,7 @@ CPP2XS.pm
 CPP2XS-Cookbook.pod
 t/t_cpp.t
 t/t_autowrap_cpp.t
+t/t_exports.t
 t/t_makefile_pl.t
 t/t_hello.t
 t/pod.t
@@ -21,6 +22,7 @@ src/Inherit.cpp
 src/test.cpp
 src/test.alt
 src/extra_simple.h
+src/exports.ext
 src/simple.h
 src/simple_typemap.txt
 src/hello.cpp

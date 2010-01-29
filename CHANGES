@@ -1,3 +1,23 @@
+- 0.15 ... Add config options EXPORT_ALL, EXPORT_OK_ALL and EXPORT_TAGS_ALL
+
+           Add newline at the bottom of src/test.alt (as per requirements of a valid
+           C/CPP source file).
+
+           'USING' (which is useless with Inline::CPP and InlineX::CPP2XS anyway)
+           now takes either a string or array reference as its value (as does
+           the Inline::C equivalent).
+
+           'LIBS' and 'TYPEMAPS' can now optionally be assigned as a (space
+           delimited) string or an array reference (same as 'INC'). Previously
+           'LIBS' and 'TYPEMAPS' had to be assigned as an array reference.
+
+           'INC' (in generated Makefile.PL) no longer automatically includes the cwd.
+
+           'TYPEMAPS' (in generated Makefile.PL) no longer automatically specifies
+           the standard perl typemap. (Doing so was annoying and, afaict, unnecessary.)
+
+           Add Inline-0.45 to PREREQ_PM.
+
 - 0.13 ... Change the test for the locatability of a specified typemap from a
            '-e' test to a '-f' test.
 
