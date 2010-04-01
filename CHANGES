@@ -1,3 +1,8 @@
+- 0.16 ... Add config option 'USE'
+           Substitution regex added to t_makefile_pl.t - to cater for recent ActivePerls
+           Cater for the possibility that we're including iostream (not iostream.h) in
+            the test scripts
+
 - 0.15 ... Add config options EXPORT_ALL, EXPORT_OK_ALL and EXPORT_TAGS_ALL
 
            Add newline at the bottom of src/test.alt (as per requirements of a valid

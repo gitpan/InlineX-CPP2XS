@@ -5,7 +5,7 @@ use InlineX::CPP2XS qw(cpp2xs);
 print "1..1\n";
 
 cpp2xs('exports','exports','.',
-    {VERSION => 0.1, WRITE_PM => 1, SRC_LOCATION => './src/exports.ext',
+    {VERSION => 0.1, WRITE_PM => 1, SRC_LOCATION => './src/exports.ext', USE => ['strict'],
      EXPORT_ALL => 1, EXPORT_OK_ALL => 1, EXPORT_TAGS_ALL => 'all'});
 
 if(!unlink('exports.xs')) {
