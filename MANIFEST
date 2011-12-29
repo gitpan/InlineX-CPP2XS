@@ -8,16 +8,11 @@ t/t_cpp.t
 t/t_autowrap_cpp.t
 t/t_exports.t
 t/t_makefile_pl.t
+t/t_prereq_pm.t
 t/t_hello.t
 t/pod.t
 t/t_code.t
 t/t_src_location.t
-expected.h
-expected_cpp.txt
-expected_typemap.txt
-expected_autowrap.txt
-expected_autowrap_c.txt
-expected_hello.txt
 src/Inherit.cpp
 src/test.cpp
 src/test.alt
@@ -36,3 +31,4 @@ demos/cpp/test.pl
 demos/cpp/INLINE.h
 demos/cpp/src/Inherit.cpp
 META.yml
+prereq_pm_test/exists

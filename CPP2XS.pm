@@ -8,7 +8,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw(cpp2xs);
 
-our $VERSION = 0.16;
+our $VERSION = 0.17;
 
 my $config_options;
 
@@ -178,6 +178,8 @@ sub cpp2xs {
 
     if($config_options->{LD}) {$o->{ILSM}{MAKEFILE}{LD} = " " . $config_options->{LD}}
 
+    if($config_options->{PREREQ_PM}) {$o->{ILSM}{MAKEFILE}{PREREQ_PM} = $config_options->{PREREQ_PM}}
+
     if($config_options->{LDDLFLAGS}) {$o->{ILSM}{MAKEFILE}{LDDLFLAGS} = " " . $config_options->{LDDLFLAGS}}
 
     # Here, we'll add the MAKE parameter to $o->{ILSM}{MAKEFILE}{MAKE} ... which
@@ -241,7 +243,7 @@ sub _build {
 sub _check_config_keys {
     for('AUTOWRAP', 'AUTO_INCLUDE', 'TYPEMAPS', 'LIBS', 'INC', 'VERSION', 'WRITE_MAKEFILE_PL',
         'BUILD_NOISY', 'BOOT', 'EXPORT_ALL', 'EXPORT_OK_ALL', 'EXPORT_TAGS_ALL', 'MAKE',
-        'PREFIX', 'CCFLAGS', 'LD', 'LDDLFLAGS', 'MYEXTLIB', 'OPTIMIZE', 'CC', 'USE', 'USING',
+        'PREFIX', 'PREREQ_PM', 'CCFLAGS', 'LD', 'LDDLFLAGS', 'MYEXTLIB', 'OPTIMIZE', 'CC', 'USE', 'USING',
         'WRITE_PM', 'CODE', 'SRC_LOCATION')
        {return 1 if $_ eq $_[0]} # it's a valid config option
     return 0;                    # it's an invalid config option
@@ -595,6 +597,19 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
     PREFIX => 'FOO_',
   ----
 
+  PREREQ_PM
+   Makes sense to specify this only if WRITE_MAKEFILE_PL is set to true.
+   The string to which PREREQ_PM is set will be reproduced as is in the
+   generated Makefile.PL. That is, if you specify:
+
+   PREREQ_PM => "{'Some::Mod' => '1.23', 'Nother::Mod' => '3.21'}",
+
+   then the WriteMakefile hash in the generated Makefile.PL will
+   contain:
+
+   PREREQ_PM => {'Some::Mod' => '1.23', 'Nother::Mod' => '3.21'},
+  ----
+
   SRC_LOCATION
    Specifies a C file that contains the CPP source code. eg:
 
@@ -662,7 +677,7 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
 
    This program is free software; you may redistribute it and/or 
    modify it under the same terms as Perl itself.
-   Copyright 2006-2009, 2010, Sisyphus
+   Copyright 2006-2009, 2010-11, Sisyphus
 
 =head1 AUTHOR
 

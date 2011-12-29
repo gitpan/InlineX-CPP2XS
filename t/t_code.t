@@ -16,132 +16,94 @@ my %config_opts = (
 
 cpp2xs('testc', 'testc', '.', \%config_opts);
 
-my ($ok, $ok2) = (1, 1);
+my $ok = 1;
+my $count = 0;
 my @rd1;
-my @rd2;
 
-if(!rename('testc.xs', 'testc_cpp.txt')) {
-  warn "couldn't rename testc.xs\n";
-  print "not ok 1\n";
-  $ok = 0;
-}
 
 if($ok) {
-  if(!open(RD1, "testc_cpp.txt")) {
-    warn "unable to open testc_cpp.txt for reading: $!\n";
+  if(!open(RD1, '<', 'testc.xs')) {
+    warn "unable to open testc.xs for reading: $!\n";
     print "not ok 1\n";
     $ok = 0;
   }
 }
 
-if($ok) {
-  if(!open(RD2, "expected_autowrap_c.txt")) {
-    warn "unable to open expected_autowrap.txt for reading: $!\n";
-    print "not ok 1\n";
-    $ok = 0;
-  }
-}
 
 if($ok) {
   @rd1 = <RD1>;
-  @rd2 = <RD2>;
 }
 
+
 if($ok) {
-  if(scalar(@rd1) != scalar(@rd2)) {
-    warn "testc_cpp.txt does not have the expected number of lines\n";
-    print "not ok 1\n";
-    $ok = 0;
+  for(@rd1) {
+     $count++ if $_ =~ /#ifndef bool/;				#1
+     $count++ if $_ =~ /#include <iostream/;			#2
+     $count++ if $_ =~ /#endif/;				#2
+     $count++ if $_ =~ /extern/;				#1
+     $count++ if $_ =~ /#include \"EXTERN\.h\"/;		#1
+     $count++ if $_ =~ /#include \"perl\.h\"/;			#1
+     $count++ if $_ =~ /#include \"XSUB\.h\"/;			#1
+     $count++ if $_ =~ /#include \"INLINE\.h\"/;		#1
+     $count++ if $_ =~ /#ifdef bool/;				#1
+     $count++ if $_ =~ /#undef bool/;				#1
+     $count++ if $_ =~ /#include <simple\.h>/;			#1
+     $count++ if $_ =~ /#include \"src\/extra_simple\.h\"/;	#1
+     $count++ if $_ =~ /simple_double/;				#6
+     $count++ if $_ =~ /PACKAGE/;				#1
+     $count++ if $_ =~ /PROTOTYPES: DISABLE/;			#1
+     $count++ if $_ =~ /dummy1/;				#4
   }
 }
 
-if($ok) {
-  for(my $i = 0; $i < scalar(@rd1); $i++) {
-     # Try to take care of platform/machine-specific issues
-     # regarding line endings and whitespace.
-     $rd1[$i] =~ s/\s//g;
-     $rd2[$i] =~ s/\s//g;
-     #$rd1[$i] =~ s/\r//g;
-     #$rd2[$i] =~ s/\r//g;
-
-     if($rd1[$i] ne $rd2[$i]) {
-       if($rd2[$i] =~/#include<iostream.h>/ && $rd1[$i] =~ /#include<iostream>/) {next}
-       warn "At line ", $i + 1, ":\n     GOT:", $rd1[$i], "*\nEXPECTED:", $rd2[$i], "*\n";
-       $ok2 = 0;
-       last;
-     }
-  }
-}
-
-if(!$ok2) {
-  warn "testc_cpp.txt does not match expected_autowrap.txt\n";
+if($ok && ($count != 26)) {
+  warn "testc.xs not as expected\n";
   print "not ok 1\n";
 }
 
 elsif($ok) {print "ok 1\n"}
 
-close(RD1) or warn "Unable to close testc_cpp.txt after reading: $!\n";
-close(RD2) or warn "Unable to close expected_autowrap.txt after reading: $!\n";
-if(!unlink('testc_cpp.txt')) { warn "Couldn't unlink testc_cpp.txt\n"}
+close(RD1) or warn "Unable to close testc.xs after reading: $!\n";
+if(!unlink('testc.xs')) { warn "Couldn't unlink testc.xs\n"}
 
-($ok, $ok2) = (1, 1);
+$ok = 1;
 
 ###########################################################################
 
-if(!open(RD1, "INLINE.h")) {
+$count = 0;
+
+if(!open(RD1, '<', 'INLINE.h')) {
   warn "unable to open INLINE.h for reading: $!\n";
   print "not ok 2\n";
   $ok = 0;
 }
 
-if($ok) {
-  if(!open(RD2, "expected.h")) {
-    warn "unable to open expected.h for reading: $!\n";
-    print "not ok 2\n";
-    $ok = 0;
-  }
-}
 
 if($ok) {
   @rd1 = <RD1>;
-  @rd2 = <RD2>;
 }
 
 if($ok) {
-  if(scalar(@rd1) != scalar(@rd2)) {
-    warn "INLINE.h does not have the expected number of lines\n";
-    print "not ok 2\n";
-    $ok = 0;
+  for(@rd1) {
+     $count++ if $_ =~ /dXSARGS/;	#1
+     $count++ if $_ =~ /items/;		#2
+     $count++ if $_ =~ /ST\(x\)/;	#1
+     $count++ if $_ =~ /sp = mark/;	#1
+     $count++ if $_ =~ /XPUSHs\(x\)/;	#1
+     $count++ if $_ =~ /PUTBACK/;	#1
+     $count++ if $_ =~ /XSRETURN\(x\)/;	#1
+     $count++ if $_ =~ /XSRETURN\(0\)/;	#1
   }
 }
 
-if($ok) {
-  for(my $i = 0; $i < scalar(@rd1); $i++) {
-     # Try to take care of platform/machine-specific issues
-     # regarding line endings and whitespace.
-     $rd1[$i] =~ s/\s//g;
-     $rd2[$i] =~ s/\s//g;
-     #$rd1[$i] =~ s/\r//g;
-     #$rd2[$i] =~ s/\r//g;
-
-     if($rd1[$i] ne $rd2[$i]) {
-       if($rd2[$i] =~ /#include<iostream.h>/ && $rd1[$i] =~ /#include<iostream>/) {next}
-       warn "At line ", $i + 1, ":\n     GOT:", $rd1[$i], "*\nEXPECTED:", $rd2[$i], "*\n";
-       $ok2 = 0;
-       last;
-     }
-  }
-}
-
-if(!$ok2) {
-  warn "INLINE.h does not match expected.h\n";
+if($ok && ($count != 9)) {
+  warn "INLINE.h not as expected\n";
   print "not ok 2\n";
 }
 
 elsif($ok) {print "ok 2\n"}
 
 close(RD1) or warn "Unable to close INLINE.h after reading: $!\n";
-close(RD2) or warn "Unable to close expected.h after reading: $!\n";
 if(!unlink('INLINE.h')) { warn "Couldn't unlink INLINE.h\n"}
 
 

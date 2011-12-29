@@ -1,7 +1,19 @@
+- 0.17 ... Add PREREQ_PM config option
+
+           Rewrite t_autowrap_cpp.t, t_code.t, t_cpp.t, t_hello.t, t_makefile_pl.t
+           and t_src_location.t to accommodate recent (and hopefully future) changes
+           to the layout of generated code.
+
+           Remove 'expected.h', 'expected_cpp.txt', 'expected_autowrap.txt',
+           'expected_autowrap_c.txt', 'expected_hello.txt' and 'expected_typemap.txt'
+           as these are no longer used.
+
 - 0.16 ... Add config option 'USE'
+
            Substitution regex added to t_makefile_pl.t - to cater for recent ActivePerls
+
            Cater for the possibility that we're including iostream (not iostream.h) in
-            the test scripts
+           the test scripts
 
 - 0.15 ... Add config options EXPORT_ALL, EXPORT_OK_ALL and EXPORT_TAGS_ALL
 

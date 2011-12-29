@@ -6,136 +6,96 @@ print "1..10\n";
 
 cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main');
 
-my ($ok, $ok2) = (1, 1);
+my $ok = 1;
 my @rd1;
-my @rd2;
+my $count = 0;
 
-if(!rename('Inherit.xs', 'Inherit.txt')) {
-  print "not ok 1 - couldn't rename Inherit.xs\n";
-  $ok = 0;
-}
 
 if($ok) {
-  if(!open(RD1, "Inherit.txt")) {
-    warn "unable to open Inherit.txt for reading: $!\n";
+  if(!open(RD1, '<', 'Inherit.xs')) {
+    warn "unable to open Inherit.xs for reading: $!\n";
     print "not ok 1\n";
     $ok = 0;
   }
 }
 
-if($ok) {
-  if(!open(RD2, "expected_cpp.txt")) {
-    warn "unable to open expected_cpp.txt for reading: $!\n";
-    print "not ok 1\n";
-    $ok = 0;
-  }
-}
 
 if($ok) {
   @rd1 = <RD1>;
-  @rd2 = <RD2>;
 }
 
+close RD1 or warn "Couldn't close Inherit.xs\n";
+
 if($ok) {
-  if(scalar(@rd1) != scalar(@rd2)) {
-    warn "Inherit.txt does not have the expected number of lines\n";
-    print "not ok 1\n";
-    $ok = 0;
+  for(@rd1) {
+     $count++ if $_ =~ /#include <iostream/;		#2
+     $count++ if $_ =~ /class Foo/;			#1
+     $count++ if $_ =~ /protected:/;			#1
+     $count++ if $_ =~ /class Bar/;			#1
+     $count++ if $_ =~ /PACKAGE/;			#3
+     $count++ if $_ =~ /Foo::DESTROY/;			#1
+     $count++ if $_ =~ /Bar::DESTROY/;			#1
+     $count++ if $_ =~ /PROTOTYPES: DISABLE/;		#3
+     $count++ if $_ =~ /BOOT/;				#1
+     $count++ if $_ =~ /PREINIT:/;			#2
+     $count++ if $_ =~ /PPCODE:/;			#2
+     $count++ if $_ =~ /set_secret/;			#6
   }
 }
 
-if($ok) {
-  for(my $i = 0; $i < scalar(@rd1); $i++) {
-     # Try to take care of platform/machine-specific issues
-     # regarding line endings and whitespace.
-     $rd1[$i] =~ s/\s//g;
-     $rd2[$i] =~ s/\s//g;
-     #$rd1[$i] =~ s/\r//g;
-     #$rd2[$i] =~ s/\r//g;
-
-     if($rd1[$i] ne $rd2[$i]) {
-       if($rd2[$i] =~ /#include<iostream.h>/ && $rd1[$i] =~ /#include<iostream>/) {next}
-       warn "At line ", $i + 1, ":\n     GOT:", $rd1[$i], "*\nEXPECTED:", $rd2[$i], "*\n";
-       $ok2 = 0;
-       last;
-     }
-  }
-}
-
-if(!$ok2) {
-  warn "Inherit.txt does not match expected_cpp.txt\n";
+if($ok && ($count != 24)) {
+  warn "Inherit.xs not as expected\n";
   print "not ok 1\n";
 }
 
 elsif($ok) {print "ok 1\n"}
 
-close(RD1) or warn "Unable to close Inherit.txt after reading: $!\n";
-close(RD2) or warn "Unable to close expected_cpp.txt after reading: $!\n";
-if(!unlink('Inherit.txt')) { warn "Couldn't unlink Inherit.txt\n"}
+if(!unlink('Inherit.xs')) { warn "Couldn't unlink Inherit.xs\n"}
 
-($ok, $ok2) = (1, 1);
+$ok = 1;
 
 ###########################################################################
 
-if(!open(RD1, "INLINE.h")) {
+$count = 0;
+
+if(!open(RD1, '<', 'INLINE.h')) {
   warn "unable to open INLINE.h for reading: $!\n";
   print "not ok 2\n";
   $ok = 0;
 }
 
-if($ok) {
-  if(!open(RD2, "expected.h")) {
-    warn "unable to open expected.h for reading: $!\n";
-    print "not ok 2\n";
-    $ok = 0;
-  }
-}
 
 if($ok) {
   @rd1 = <RD1>;
-  @rd2 = <RD2>;
 }
 
 if($ok) {
-  if(scalar(@rd1) != scalar(@rd2)) {
-    warn "INLINE.h does not have the expected number of lines\n";
-    print "not ok 2 - \n";
-    $ok = 0;
+  for(@rd1) {
+     $count++ if $_ =~ /dXSARGS/;	#1
+     $count++ if $_ =~ /items/;		#2
+     $count++ if $_ =~ /ST\(x\)/;	#1
+     $count++ if $_ =~ /sp = mark/;	#1
+     $count++ if $_ =~ /XPUSHs\(x\)/;	#1
+     $count++ if $_ =~ /PUTBACK/;	#1
+     $count++ if $_ =~ /XSRETURN\(x\)/;	#1
+     $count++ if $_ =~ /XSRETURN\(0\)/;	#1
   }
 }
 
-if($ok) {
-  for(my $i = 0; $i < scalar(@rd1); $i++) {
-     # Try to take care of platform/machine-specific issues
-     # regarding line endings and whitespace.
-     $rd1[$i] =~ s/\s//g;
-     $rd2[$i] =~ s/\s//g;
-     #$rd1[$i] =~ s/\r//g;
-     #$rd2[$i] =~ s/\r//g;
-
-     if($rd1[$i] ne $rd2[$i]) {
-       if($rd2[$i] =~ /#include<iostream.h>/ && $rd1[$i] =~ /#include<iostream>/) {next}
-       warn "At line ", $i + 1, ":\n     GOT:", $rd1[$i], "*\nEXPECTED:", $rd2[$i], "*\n";
-       $ok2 = 0;
-       last;
-     }
-  }
-}
-
-if(!$ok2) {
-  warn "INLINE.h does not match expected.h\n";
+if($ok && ($count != 9)) {
+  warn "INLINE.h not as expected\n";
   print "not ok 2\n";
 }
 
 elsif($ok) {print "ok 2\n"}
 
 close(RD1) or warn "Unable to close INLINE.h after reading: $!\n";
-close(RD2) or warn "Unable to close expected.h after reading: $!\n";
 if(!unlink('INLINE.h')) { warn "Couldn't unlink INLINE.h\n"}
 
-($ok, $ok2) = (1, 1);
-
 #############################################################################
+
+$ok = 1;
+$count = 0;
 
 if(!open(RD1, "CPP.map")) {
   warn "unable to open CPP.map for reading: $!\n";
@@ -143,54 +103,30 @@ if(!open(RD1, "CPP.map")) {
   $ok = 0;
 }
 
-if($ok) {
-  if(!open(RD2, "expected_typemap.txt")) {
-    warn "unable to open expected_typemap.txt for reading: $!\n";
-    print "not ok 3\n";
-    $ok = 0;
-  }
-}
 
 if($ok) {
   @rd1 = <RD1>;
-  @rd2 = <RD2>;
 }
 
 if($ok) {
-  if(scalar(@rd1) != scalar(@rd2)) {
-    warn "CPP.map does not have the expected number of lines\n";
-    print "not ok 3\n";
-    $ok = 0;
+  for(@rd1) {
+     $count++ if $_ =~ /O_Inline_CPP_Class/;	#4
+     $count++ if $_ =~ /TYPEMAP/;		#1
+     $count++ if $_ =~ /OUTPUT/;		#1
+     $count++ if $_ =~ /INPUT/;			#1
+     $count++ if $_ =~ /sv_isobject/;		#1
+     $count++ if $_ =~ /XSRETURN_UNDEF/;	#1
   }
 }
 
-if($ok) {
-  for(my $i = 0; $i < scalar(@rd1); $i++) {
-     # Try to take care of platform/machine-specific issues
-     # regarding line endings and whitespace.
-     $rd1[$i] =~ s/\s//g;
-     $rd2[$i] =~ s/\s//g;
-     #$rd1[$i] =~ s/\r//g;
-     #$rd2[$i] =~ s/\r//g;
-
-     if($rd1[$i] ne $rd2[$i]) {
-       if($rd2[$i] =~ /#include<iostream.h>/ && $rd1[$i] =~ /#include<iostream>/) {next}
-       warn "At line ", $i + 1, ":\n     GOT:", $rd1[$i], "*\nEXPECTED:", $rd2[$i], "*\n";
-       $ok2 = 0;
-       last;
-     }
-  }
-}
-
-if(!$ok2) {
-  warn "CPP.map does not match expected_typemap.txt\n";
+if($ok && ($count != 9)) {
+  warn "CPP.map not as expected\n";
   print "not ok 3\n";
 }
 
 elsif($ok) {print "ok 3\n"}
 
 close(RD1) or warn "Unable to close CPP.map after reading: $!\n";
-close(RD2) or warn "Unable to close expected_typemap.txt after reading: $!\n";
 if(!unlink('CPP.map')) { warn "Couldn't unlink CPP.map\n"}
 
 
