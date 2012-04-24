@@ -1,5 +1,23 @@
 use ExtUtils::MakeMaker;
 
+my $file = 'cpp2xs';
+
+open RD, '<', 'cpp_script.in' or die "Can't open cpp_script.in for reading: $!";
+open OUT, '>', $file or die "Can't open $file for writing: $!";
+
+print OUT <<"!GROK!THIS!";
+$Config::Config{'startperl'}
+    eval 'exec perl -S \$0 "\$@"'
+        if 0;
+!GROK!THIS!
+
+while(<RD>) { print OUT $_ }
+
+close RD or die "Can't close cpp_script.in after reading: $!";
+close OUT or die "Can't close $file after writing: $!";
+
+chmod 0555, $file;
+
 my %options =
   (
   NAME     => 'InlineX::CPP2XS',
@@ -8,23 +26,13 @@ my %options =
                 'Inline::CPP'  => 0.25,
                },
   VERSION_FROM => 'CPP2XS.pm',
+
+  EXE_FILES => ['cpp2xs'],
+  clean => { FILES => 'cpp2xs' },
   );
 
 WriteMakefile(%options);
 
-eval {require Parse::RecDescent;};
-unless($@) {
-  if("$Parse::RecDescent::VERSION" > 1.94){
-      warn "
 
-      WARNING: 
-        You have version $Parse::RecDescent::VERSION of Parse-RecDescent.
-        If this module fails its tests (as is generally
-        the case with this version of Parse-RecDescent),
-        try installing version 1.94.
-
-";
-  }
-}
 
 

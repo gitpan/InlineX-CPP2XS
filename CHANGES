@@ -1,3 +1,10 @@
+- 0.19 ... Add CCFLAGSEX, BOOT_F and PRE_HEAD options
+
+           Add cpp2xs.pl (which generates the cpp2xs script)
+
+           If EXPORT_TAGS_ALL is set, then it's now unnecessary to set
+           EXPORT_OK_ALL
+
 - 0.17 ... Add PREREQ_PM config option
 
            Rewrite t_autowrap_cpp.t, t_code.t, t_cpp.t, t_hello.t, t_makefile_pl.t
