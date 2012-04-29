@@ -37,5 +37,11 @@ demos/cpp/Makefile.PL
 demos/cpp/test.pl
 demos/cpp/INLINE.h
 demos/cpp/src/Inherit.cpp
+demos/cpp2xs_utility/README
+demos/cpp2xs_utility/src/FastSieve.cpp
+demos/cpp2xs_utility/t/00load.t
+demos/cpp2xs_utility/t/01can_subs.t
+demos/cpp2xs_utility/t/02exports.t
+demos/cpp2xs_utility/t/03sieve_object.t
 META.yml
 prereq_pm_test/exists

@@ -1,7 +1,7 @@
 Inherit.xs, Inherit.pm, Makefile.PL, INLINE.h and CPP.map were produced by
 cd'ing to this (ie demos/cpp) directory and running the following one liner:
 
-perl -MInlineX::CPP2XS -e "InlineX::CPP2XS::cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main',  '.', {WRITE_MAKEFILE_PL => 1, VERSION => 0.11, CC => 'g++', WRITE_PM => 1})"
+perl -MInlineX::CPP2XS -e "InlineX::CPP2XS::cpp2xs('Math::Geometry::Planar::GPC::Inherit', 'main',  '.', {WRITE_MAKEFILE_PL => 1, VERSION => 0.11, WRITE_PM => 1})"
 
 The assumption is that you're using 'g++' as your cpp compiler. If that's not
 the case then you need to amend the CC entry in the above command appropriately.

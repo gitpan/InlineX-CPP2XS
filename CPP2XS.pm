@@ -8,7 +8,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw(cpp2xs);
 
-our $VERSION = 0.19;
+our $VERSION = '0.20';
 
 my $config_options;
 
@@ -172,16 +172,33 @@ sub cpp2xs {
     my @uncorrupted_typemaps = @{$o->{ILSM}{MAKEFILE}{TYPEMAPS}};
     push @uncorrupted_typemaps, 'CPP.map';
 
-    if($config_options->{LIBS}) {
-      $o->{ILSM}{MAKEFILE}{LIBS} = $config_options->{LIBS}
-    }
-    else { $o->{ILSM}{MAKEFILE}{LIBS} = []}
-
     if($config_options->{PREFIX}) {$o->{ILSM}{XS}{PREFIX} = $config_options->{PREFIX}}
 
     bless($o, 'Inline::CPP');
 
     Inline::CPP::validate($o);
+
+    if($config_options->{LIBS}) {
+      my @init;
+      my $init;
+      if(ref($o->{ILSM}{MAKEFILE}{LIBS}) eq 'ARRAY') {
+        @init = @{$o->{ILSM}{MAKEFILE}{LIBS}};
+        $init = join ' ', @init;
+      }
+      else {$init = $o->{ILSM}{MAKEFILE}{LIBS};}
+
+      my @add;
+      my $add;
+      if(ref($config_options->{LIBS}) eq 'ARRAY') {
+        @add = @{$config_options->{LIBS}};
+        $add = join ' ', @add;
+      }
+      else {$add = $config_options->{LIBS};}
+      $o->{ILSM}{MAKEFILE}{LIBS} = $init . ' ' . $add;
+    }
+    #else { $o->{ILSM}{MAKEFILE}{LIBS} = []} # We don't want this with Inline::CPP
+                                             # as it clobbers any setting that was
+                                             # made by Inline::CPP::validate()
 
     if($config_options->{PRE_HEAD}) {
       my $v = $config_options->{PRE_HEAD};
@@ -321,7 +338,8 @@ sub _write_pm {
     else {
       print WR "\@", $o->{API}{module}, "::EXPORT = qw(\n";
       for(@{$o->{ILSM}{parser}{data}{functions}}) {
-        if ($_ =~ /^_/ && $_ !~ /^__/) {next} 
+        # exclude function names that begin with a single underscore
+        if ($_ =~ /^_/  && $_ !~ /^__/)  {next} 
         my $l = length($_);
         if($length + $l > $max) {
           print WR "\n", " " x $offset, "$_ ";
@@ -341,7 +359,8 @@ sub _write_pm {
     else {
       print WR "\@", $o->{API}{module}, "::EXPORT_OK = qw(\n";
       for(@{$o->{ILSM}{parser}{data}{functions}}) {
-        if ($_ =~ /^_/ && $_ !~ /^__/) {next} 
+        # exclude function names that begin with a single underscore
+        if ($_ =~ /^_/ && $_ !~ /^__/)   {next} 
         my $l = length($_);
         if($length + $l > $max) {
           print WR "\n", " " x $offset, "$_ ";
@@ -358,7 +377,8 @@ sub _write_pm {
     if($config_options->{EXPORT_TAGS_ALL}){
       print WR "\%", $o->{API}{module}, "::EXPORT_TAGS = (", $config_options->{EXPORT_TAGS_ALL}, " => [qw(\n";
       for(@{$o->{ILSM}{parser}{data}{functions}}) {
-        if ($_ =~ /^_/ && $_ !~ /^__/) {next} 
+        # exclude function names that begin with a single underscore
+        if ($_ =~ /^_/ && $_ !~ /^__/)   {next}
         my $l = length($_);
         if($length + $l > $max) {
           print WR "\n", " " x $offset, "$_ ";
@@ -440,6 +460,9 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
   If a third argument is given, it's deemed to be the build directory
   unless it's a hash reference (in which case it's deemed to be the
   hash reference containing the additional config options).
+
+  As of version 0.19, a cpp2xs utility is also provided. It's just an
+  Inline::CPP2XS wrapper - see 'cpp2xs --help'.
 
 =head1 DESCRIPTION
 

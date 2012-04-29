@@ -1,3 +1,7 @@
+- 0.20 ... Fix LIBS setting. Was clobbering any value set by Inline::CPP::validate().
+
+           Add the demos/cpp2xs_utility demo.
+
 - 0.19 ... Add CCFLAGSEX, BOOT_F and PRE_HEAD options
 
            Add cpp2xs.pl (which generates the cpp2xs script)

@@ -1,0 +1,13 @@
+Note that src/FastSieve.cpp is a copy of the code included in FastSieve.pm in David Oswald's 
+Math-Prime-FastSieve-0.07 source distro.
+Similarly - the 't' folder is a copy of the 't' folder from the same distro.
+
+Having installed InlineX::CPP2XS (version 0.20 or later), if you 'cd' to the folder that contains this file and:
+
+1) run cpp2xs --m=Math::Prime::FastSieve --write_makefile_pl=1 --write_pm=1 --version=0.07
+2) Edit @Math::Prime::FastSieve::EXPORT_OK in the generated ./FastSieve.pm to contain the primes function
+3) Run 'perl Makefile.PL' and 'make test'
+
+then you will have built Math-Prime-FastSieve-0.07 such that it has no dependency on Inline::CPP.
+(Nothing more ... nothing less :-)
+
