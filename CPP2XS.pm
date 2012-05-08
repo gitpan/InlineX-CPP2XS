@@ -8,21 +8,23 @@ our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw(cpp2xs);
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 my $config_options;
 
-our @allowable_config_keys = ('AUTOWRAP', 'AUTO_INCLUDE', 'CODE', 'TYPEMAPS', 'LIBS', 'INC', 
+our @allowable_config_keys = ('AUTOWRAP', 'AUTO_INCLUDE', 'CODE', 'DIST', 'TYPEMAPS', 'LIBS', 'INC', 
         'WRITE_MAKEFILE_PL', 'BUILD_NOISY', 'BOOT', 'BOOT_F', 'EXPORT_ALL', 'EXPORT_OK_ALL',
         'EXPORT_TAGS_ALL', 'MAKE', 'PREFIX', 'PREREQ_PM', 'CCFLAGS', 'CCFLAGSEX', 'LD', 'LDDLFLAGS',
         'MYEXTLIB', 'OPTIMIZE', 'PRE_HEAD', 'CC', 'SRC_LOCATION', '_TESTING', 'USE', 'USING',
-        'WRITE_PM', 'VERSION');  
+        'WRITE_PM', 'VERSION', 'MANIF');
+
+##=========================##  
 
 sub cpp2xs {
     ## This is basically just a copy'n'paste of the InlineX::C2XS::c2xs() function,
     ## with all occurrences of "C" changed to "CPP" ... clever, eh ??
     eval {require "Inline/CPP.pm"};
-    if($@ || $Inline::CPP::VERSION < 0.25) {die "Need a functioning Inline::CPP (version 0.25 or later). $@"}
+    if($@ || $Inline::CPP::VERSION < 0.39) {die "Need a functioning Inline::CPP (version 0.39 or later). $@"}
     my $module = shift;
     my $pkg = shift;
 
@@ -130,6 +132,12 @@ sub cpp2xs {
     for(keys(%$config_options)) { die "$_ is an invalid config option" if !_check_config_keys($_)}
 
     if(exists($config_options->{BUILD_NOISY})) {$o->{CONFIG}{BUILD_NOISY} = $config_options->{BUILD_NOISY}}
+
+    if($config_options->{DIST}) {
+      $config_options->{WRITE_MAKEFILE_PL} = 'P';
+      $config_options->{WRITE_PM} = 1;
+      $config_options->{MANIF} = 1;
+    }
 
     if($config_options->{AUTOWRAP}) {$o->{ILSM}{AUTOWRAP} = 1}
 
@@ -261,7 +269,13 @@ sub cpp2xs {
 
     if(!$need_inline_h) {$o->{ILSM}{AUTO_INCLUDE} =~ s/#include "INLINE\.h"//i}
 
-    _build($o, $need_inline_h);
+    my $portable;
+    {
+    no warnings 'uninitialized';
+    $portable = uc($config_options->{WRITE_MAKEFILE_PL}) eq 'P' ? 1 : 0;
+    }
+
+    _build($o, $need_inline_h, $portable);
 
     if($config_options->{WRITE_MAKEFILE_PL}) {
      $o->{ILSM}{MAKEFILE}{INC}= $uncorrupted_inc; # Otherwise cwd is automatically added.
@@ -270,6 +284,9 @@ sub cpp2xs {
       else {warn "'VERSION' being set to '0.00' in the Makefile.PL. Did you supply a correct version number to cpp2xs() ?"}
       print "Writing Makefile.PL in the ", $o->{API}{build_dir}, " directory\n";
       $o->call('write_Makefile_PL', 'Build Glue 3');
+      if(uc($config_options->{WRITE_MAKEFILE_PL}) eq 'P') { # Need to rewrite the genrated Makefile.PL
+        rewrite_makefile_pl($build_dir);
+      }
     }
 
     if($config_options->{WRITE_PM}) {
@@ -280,23 +297,52 @@ sub cpp2xs {
       }
     _write_pm($o);
     }
+
+    if($config_options->{MANIF}) {
+      _write_manifest($modfname, $build_dir, $config_options);
+    }
 }
+
+##=========================##
 
 sub _build {
     my $o = shift;
     my $need_inline_headers = shift;
+    my $portable = shift;
+    my $save;
     
     $o->call('preprocess', 'Build Preprocess');
     $o->call('parse', 'Build Parse');
 
-    print "Writing ", $o->{API}{modfname}, ".xs in the ", $o->{API}{build_dir}, " directory\n";
+    my $modfname = $o->{API}{modfname};
+    my $build_dir = $o->{API}{build_dir};
+
+    print "Writing ${modfname}.xs in the $build_dir directory\n";
+    if($portable) {
+      $save = $o->{ILSM}{AUTO_INCLUDE};
+      my @s = split /\n/, $save;
+      open WRA, '>', "$build_dir/auto_include.in" or die "Couldn't open $build_dir/auto_include.in for writing: $!";
+      for my $l(@s) {
+        $l = '' if($l =~ /__INLINE_CPP_STANDARD_HEADERS/ || $l =~ /__INLINE_CPP_NAMESPACE_STD/);
+        print WRA $l, "\n";
+      }
+      close WRA or die "Couldn't close $build_dir/auto_include.in after writing: $!";
+      $o->{ILSM}{AUTO_INCLUDE} = "\n#include \"icppdefines.h\"\n";;
+    }
+
     $o->call('write_XS', 'Build Glue 1');
+    $o->{ILSM}{AUTO_INCLUDE} = $save if $portable;
+    remove_dup("$modfname.xs", $build_dir, $portable); # Removes duplicates of some defines
+                                                       # in the xs file.
 
     if($need_inline_headers) {
       print "Writing INLINE.h in the ", $o->{API}{build_dir}, " directory\n";
       $o->call('write_Inline_headers', 'Build Glue 2');
     }
+
 }
+
+##=========================##
 
 sub _check_config_keys {
     for(@allowable_config_keys) {
@@ -304,6 +350,8 @@ sub _check_config_keys {
     }
     return 0;                  # it's an invalid config option
 }
+
+##=========================##
 
 sub _write_pm {
     my $o = shift;
@@ -397,6 +445,268 @@ sub _write_pm {
     close(WR) or die "Couldn't close the .pm file after writing to it: $!";
 }
 
+##=========================##
+
+sub rewrite_makefile_pl {
+    # This sub will get called if we want to write a portable Makefile.PL - ie iff
+    # WRITE_MAKEFILE_PL is set to 'p' or 'P'.
+
+    my $bd = shift; # build directory
+
+    die "Couldn't rename $bd/Makefile.PL"
+      unless rename "$bd/Makefile.PL", "$bd/Makefile.PL_first";
+
+    # Use the cpp test script from Inline::CPP
+    my $test_cpp = <<'TEST_CPP';
+#include <iostream>
+int main(){
+    return 0;
+}
+
+TEST_CPP
+
+    open WRT, '>', "$bd/ilcpptest.cpp" or die "Couldn't open $bd/ilcpptest.cpp for writing: $!";
+    print WRT $test_cpp;
+    close WRT or die "Couldn't close $bd/ilcpptest.cpp: $!";
+
+
+    open RD, '<', "$bd/Makefile.PL_first" or die "Couldn't open $bd/Makefile.PL_first for reading: $!";
+    open WR, '>', "$bd/Makefile.PL" or die "Couldn't open Makefile.PL for writing: $!";
+    #########
+
+    my @make = <RD>;
+
+####################################
+####################################
+####################################
+
+    my $insert = <<'IN';
+
+    my ($cc_guess, $libs_guess) = _guess();
+
+    my $iostream = which_iostream($cc_guess);
+
+    my $standard;
+    if($iostream eq '<iostream>' ) {
+      $standard = <<'STD';
+
+#define __INLINE_CPP_STANDARD_HEADERS 1
+#define __INLINE_CPP_NAMESPACE_STD 1
+
+STD
+    }
+    else {$standard = ''}
+
+write_icppdefines_h($standard);
+
+sub _guess {
+
+    my $cc_guess;
+    my $libs_guess;
+
+    if($Config{osname} eq 'darwin'){
+      my $stdlib_query =
+        'find /usr/lib/gcc -name "libstdc++*" | grep $( uname -p )';
+      my $stdcpp =
+        `$stdlib_query`; + $stdcpp =~ s/^(.*)\/[^\/]+$/$1/;
+      $cc_guess   = 'g++';
+      $libs_guess = "-L$stdcpp -lstdc++";
+    }
+    elsif (
+      $Config{osname} ne 'darwin' and
+      $Config{gccversion} and
+      $Config{cc} =~ m#\bgcc\b[^/]*$# ) {
+      ($cc_guess  = $Config{cc}) =~ s[\bgcc\b([^/]*)$(?:)][g\+\+$1];
+      $libs_guess = '-lstdc++';
+    }
+    elsif ($Config{osname} =~ m/^MSWin/) {
+      $cc_guess   = 'cl -TP -EHsc';
+      $libs_guess = 'MSVCIRT.LIB';
+    }
+    elsif ($Config{osname} eq 'linux') {
+      $cc_guess   = 'g++';
+      $libs_guess = '-lstdc++';
+    }
+    # Dragonfly patch is just a hunch...
+    elsif( $Config{osname} eq 'netbsd' || $Config{osname} eq 'dragonfly' ) {
+      $cc_guess   = 'g++';
+      $libs_guess = '-lstdc++ -lgcc_s';
+    }
+    elsif ($Config{osname} eq 'cygwin') {
+      $cc_guess   = 'g++';
+      $libs_guess = '-lstdc++';
+    }
+    elsif ($Config{osname} eq 'solaris' or $Config{osname} eq 'SunOS') {
+      if(
+        $Config{cc} eq 'gcc' ||( exists( $Config{gccversion} ) && $Config{gccversion} > 0)) {
+        $cc_guess   = 'g++';
+        $libs_guess = '-lstdc++';
+      }
+      else {
+        $cc_guess   = 'CC';
+        $libs_guess ='-lCrun';
+      }
+    }
+    elsif ($Config{osname} eq 'mirbsd') {
+      my $stdlib_query =
+        'find /usr/lib/gcc -name "libstdc++*" | grep $( uname -p ) | head -1';
+      my $stdcpp =
+        `$stdlib_query`; + $stdcpp =~ s/^(.*)\/[^\/]+$/$1/;
+      $cc_guess   = 'g++';
+      $libs_guess = "-L$stdcpp -lstdc++ -lc -lgcc_s";
+    }
+    # Sane defaults for other (probably unix-like) operating systems
+    else {
+      $cc_guess   = 'g++';
+      $libs_guess = '-lstdc++';
+    }
+
+    return ($cc_guess, $libs_guess);
+}
+
+sub which_iostream {
+
+    my $cpp_compiler = shift;
+
+    my $result;
+    if( $cpp_compiler =~ m/^cl/ ) {
+      $result = system(
+        qq{$cpp_compiler -Fe:ilcpptest.exe } .
+        qq{ilcpptest.cpp}
+      );
+    }
+    else {
+      $result = system(
+        qq{$cpp_compiler -o ilcpptest.exe } .
+        qq{ilcpptest.cpp}
+      );
+    }
+
+    if( $result != 0 ) {
+      # Compiling with <iostream> failed, so we'll assume .h headers.
+      $result = '<iostream.h>';
+    }
+    else {
+      # Compiling with <iostream> succeeded.
+      $result = '<iostream>';
+      unlink "ilcpptest.exe" or warn $!; # Unlink the executable.
+    }
+    return $result;
+}
+
+sub write_icppdefines_h {
+
+    my $standard = shift;
+
+    open RDA, '<', 'auto_include.in' or die "Couldn't open auto_include.in for reading: $!";
+    my @auto = <RDA>;
+    close RDA or die "Couldn't close auto_include.in after reading: $!";
+
+    my $auto = join '', @auto;
+
+    if($standard) {$auto =~ s/<iostream.h>/<iostream>/g}
+    else {$auto =~ s/<iostream>/<iostream.h>/g}
+
+    open WRXS, '>', "icppdefines.h" or die "Couldn't open icppdefines.h for writing: $!";
+
+    print WRXS "\n/* This file generated by the Makefile.PL */\n\n";
+    print WRXS $standard;
+    print WRXS $auto; 
+
+    close WRXS or die "Couldn't close icppdefines.h: $!";
+
+}
+
+IN
+
+####################################
+####################################
+####################################
+
+    $make[0] .= $insert;
+    for(@make) {
+      if($_ =~ /'LIBS' => '/) {
+        my @t = split /'LIBS' => /;
+        $t[1] =~ s/'/"/g;
+        $t[1] =~ s/"/\$libs_guess /;
+        $_ = join "'LIBS' => \"", @t;
+      }
+      if($_ =~ /'CC' =>/) {$_ = '  \'CC\' => "$cc_guess",' . "\n"}
+    }
+    #########
+    for(@make) {print WR $_}
+    close RD or die "Couldn't close $bd/Makefile.PL_first: $!";
+    close WR or die "Couldn't close $bd/Makefile.PL: $!";
+    unlink "$bd/Makefile.PL_first" or die "Couldn't unlink $bd/Makefile.PL_first: $!";
+}
+
+##=========================##
+
+sub remove_dup {
+
+    my $xs = shift;
+    my $bd = shift;
+    my $portable = shift;
+
+    open RDS, '<', "$bd/$xs" or die "Can't open $bd/$xs for reading: $!";
+    my(@lines) = <RDS>;
+    close RDS or die "Can't close $bd/$xs after reading: $!";
+    if($portable) { # Remove all occurrences
+      for my $l(@lines) {
+        last if $l =~ /^#include "EXTERN.h"/;
+        $l = '' if($l =~ /^#define __INLINE_CPP_STANDARD_HEADERS 1\s/ || $l =~ /^#define __INLINE_CPP_NAMESPACE_STD 1\s/);
+      }
+    }
+    else { # Leave the first occurrence intact - remove all subsequent occurrences
+      my($found1, $found2) = (0, 0);
+      for my $l(@lines) {
+        last if $l =~ /^#include "EXTERN.h"/;
+        if($l =~ /^#define __INLINE_CPP_STANDARD_HEADERS 1\s/) {
+          $l = '' unless $found1;
+          $found1 = 1;
+        }
+        if($l =~ /^#define __INLINE_CPP_NAMESPACE_STD 1\s/) {
+          $l = '' unless $found2;
+          $found2 = 1;
+        }
+      }
+    }
+    open WRS, '>', "$bd/$xs" or die "Can't open $bd/$xs for writing: $!";
+    for my $p(@lines) {print WRS $p}
+    close WRS or die "Can't close $bd/$xs after writing: $!";
+ 
+}
+
+##=========================##
+
+sub _write_manifest {
+    my $m = shift;
+    my $bd = shift; # build directory
+    my $c = shift;  # config options
+
+    print "Writing the MANIFEST file in the $bd directory\n";
+
+    open WRM, '>', "$bd/MANIFEST" or die "Can't open MANIFEST for writing: $!";
+    print WRM "MANIFEST\n";
+    if($c->{WRITE_PM}) {print WRM "$m.pm\n"}
+    print WRM "$m.xs\nCPP.map\n";
+    if($c->{WRITE_MAKEFILE_PL}) {
+      print WRM "Makefile.PL\n";
+      if(uc($c->{WRITE_MAKEFILE_PL}) eq 'P') {
+        print WRM "auto_include.in\nilcpptest.cpp\n";
+      }
+    }
+    close WRM;
+}
+
+##=========================##
+
+##=========================##
+
+##=========================##
+
+##=========================##
+
 1;
 
 __END__
@@ -420,7 +730,8 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
 
   # $config_opts is an optional fourth arg (hash reference)
   my $config_opts = {'WRITE_PM' => 1,
-                     'WRITE_MAKEFILE_PL' => 1,
+                     #'WRITE_MAKEFILE_PL' => 1, # non portable files
+                     'WRITE_MAKEFILE_PL' => 'p', # portable files
                      'VERSION' => 0.42,
                     };
 
@@ -463,6 +774,8 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
 
   As of version 0.19, a cpp2xs utility is also provided. It's just an
   Inline::CPP2XS wrapper - see 'cpp2xs --help'.
+  See also the cpp2xs demos in demos/cpp2xs_utility/README (in the
+  InlineX::CPP2XS source distro).
 
 =head1 DESCRIPTION
 
@@ -573,6 +886,12 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
     CCFLAGS => $Config{ccflags} . ' -DMY_DEFINE',
   ----
 
+  DIST
+   If set, sets WRITE_MAKEFILE_PL => 'p', WRITE_PM => 1, MANIF => 1. eg:
+
+    DIST => 1,
+  ----
+
   CCFLAGSEX
    Add compiler flags to existing flags.
    It makes sense to assign this key only when WRITE_MAKEFILE_PL is set to
@@ -651,6 +970,14 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
    key only when WRITE_MAKEFILE_PL is set to a true value. eg:
 
     MAKE => 'pmake', # I have no idea whether that will work :-)
+  ----
+
+  MANIF
+   If true, the MANIFEST file will be written. (It will include all created
+   files.) eg:
+
+   MANIF => 1,
+
   ----
 
   MYEXTLIB
@@ -743,7 +1070,9 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
    generated. (You should also assign the 'VERSION' key to the
    correct value when WRITE_MAKEFILE_PL is set.) eg:
     
-    WRITE_MAKEFILE_PL => 1,
+    WRITE_MAKEFILE_PL => 1,   # Makefile.PL and xs file may not work on
+                              # a different machine.
+    WRITE_MAKEFILE_PL => 'p', # Makefile.PL and xs file should be portable
   ----
 
   WRITE_PM

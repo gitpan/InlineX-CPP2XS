@@ -18,6 +18,9 @@ case you supply the code using the CODE=>$code key/value pair. For a
 demo of these capabilities that became available in 0.13, see the
 section "UPDATE for 0.13 and later" at the end of this document.
 
+For even more recent additions, see the section "UPDATE for 0.20 and
+later".
+
 Create a separate directory to work through this demo (let's call it
 'test' - though you can call it whatever you like), then 'cd' to the
 newly created 'test' directory, and create 2 folders in it - 'src' and
@@ -203,7 +206,7 @@ $hashfef:
 Specify an alternative parser to parse the CPP code. There are
 currently no alternative parsers available to Inline::CPP.
 
-   USING => ['ParseRegExp'], # fails on Inline::CPP & InlineX::CPP2xs
+   USING => ['ParseRegExp'], # fails on Inline::CPP & InlineX::CPP2XS
 
 **********************************************************************
 
@@ -392,6 +395,23 @@ case 'create.pl' is as follows:
                    WRITE_PM => 1,
                    CODE => $code};
     cpp2xs($mod, $pkg, $build_dir, $hashref);
+
+
+**********************************************************************
+
+=head1 "UPDATE for 0.20 and later"
+
+With version 0.20, a 'cpp2xs' utility was provided - it provides a less
+cumbersome method of accessing the cpp2xs functionality. 
+(See 'cpp2xs --help')
+
+Version 0.21 adds the capability of writing a portable Makefile.PL (and
+xs file) via the config option WRITE_MAKEFILE_PL=>'p'.
+
+And, in the source distro, there's now a nice demo featuring proper C++
+code from David Oswald's Math::Prime::FastSieve module(as opposed to the
+C code that populates this cookbook). See demos/cpp2xs_utility/README in
+the 0.21 (and later) source distro. 
 
 
 **********************************************************************

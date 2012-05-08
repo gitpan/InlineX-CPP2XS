@@ -14,6 +14,7 @@ t/t_cpp2xs_utility.t
 t/t_autowrap_cpp.t
 t/t_exports.t
 t/t_makefile_pl.t
+t/t_portability.t
 t/t_prehead.t
 t/t_prereq_pm.t
 t/t_hello.t

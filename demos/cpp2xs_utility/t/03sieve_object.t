@@ -32,7 +32,7 @@ my %big_tests = (
 
 # Test a small sieve.
 my $obj_param = 20;
-my $sieve = new_ok( 'Math::Prime::FastSieve::Sieve', [ $obj_param ] );
+my $sieve = new_ok( 'Math::Prime::FastSieve::_Sieve', [ $obj_param ] );
 
 # Test $sieve->primes():
 
@@ -202,7 +202,7 @@ note "Testing \$sieve->count_sieve()";
     foreach my $param ( sort { $a <=> $b } keys %test_data ) {
         my $expect = $test_data{ $param };
         is(
-            Math::Prime::FastSieve::Sieve->new( $param )->count_sieve(),
+            Math::Prime::FastSieve::_Sieve->new( $param )->count_sieve(),
             $expect,
             "\$sieve->count_sieve(): Accurate count of $expect " .
             "for a sieve of 1 .. $param."

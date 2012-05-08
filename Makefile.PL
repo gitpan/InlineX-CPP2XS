@@ -22,8 +22,8 @@ my %options =
   (
   NAME     => 'InlineX::CPP2XS',
   PREREQ_PM => {
-                'Inline'  => 0.45,
-                'Inline::CPP'  => 0.25,
+                'Inline'  => 0.50,
+                'Inline::CPP'  => 0.39,
                },
   VERSION_FROM => 'CPP2XS.pm',
 

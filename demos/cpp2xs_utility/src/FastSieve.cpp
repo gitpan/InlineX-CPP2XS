@@ -1,10 +1,11 @@
 /* This code copied from David Oswald's FastSieve.pm (Math-Prime-FastSieve-0.07)
-*/
+ * "Sieve" class renamed to "_Sieve" to accommodate --write_export_ok_all option
+ */
 
 #include <vector>
 using namespace std;
 
-/* Class Sieve below.  Perl sees it as a class named
+/* Class _Sieve below.  Perl sees it as a class named
  * "Math::Prime::FastSieve::Sieve".  The constructor is mapped to
  * "new()" within Perl, and the destructor to "DESTROY()".  All other
  * methods are mapped with the same name as declared in the class.
@@ -28,11 +29,11 @@ using namespace std;
  */
 
 
-class Sieve
+class _Sieve
 {
     public:
-        Sieve ( int n ); // Constructor. Perl sees "new()".
-        ~Sieve(       ); // Destructor. Seen as "DESTROY()".
+        _Sieve ( int n ); // Constructor. Perl sees "new()".
+        ~_Sieve(       ); // Destructor. Seen as "DESTROY()".
         bool isprime( int n ); // Test if n is prime.
         SV*  primes ( int n ); // Return all primes in an aref.
         unsigned int  nearest_le ( int n ); // Return nearest prime <= n.
@@ -50,7 +51,7 @@ class Sieve
 
 
 // Set up a primes sieve of 0 .. n inclusive.
-Sieve::Sieve( int n )
+_Sieve::_Sieve( int n )
 {
     std::vector<bool>* primes = new std::vector<bool>( n + 1, 0 );
     num_primes = 0;
@@ -69,14 +70,14 @@ Sieve::Sieve( int n )
 
 
 // Deallocate memory for primes sieve.
-Sieve::~Sieve() {
+_Sieve::~_Sieve() {
     delete sieve;
 }
 
 
 // Yes or no: Is the number a prime?  Must be within the range of
 // 0 through max_n (the upper limit set by the constructor).
-bool Sieve::isprime( int n )
+bool _Sieve::isprime( int n )
 {
     if( n < 2 || n > max_n )  return false; // Bounds checking.
     if( n == 2 )              return true;  // 2 is prime.
@@ -89,7 +90,7 @@ bool Sieve::isprime( int n )
 // Return a reference to an array containing the list of all primes
 // less than or equal to n.  n must be within the range set in the
 // constructor.
-SV* Sieve::primes( int n )
+SV* _Sieve::primes( int n )
 {
     AV* av = newAV();
     if( n < 2 || n > max_n ) // Logical short circuit order is significant
@@ -103,7 +104,7 @@ SV* Sieve::primes( int n )
     return newRV_noinc( (SV*) av );
 }
 
-SV* Sieve::ranged_primes( int lower, int upper )
+SV* _Sieve::ranged_primes( int lower, int upper )
 {
     AV* av = newAV();
     if(
@@ -127,7 +128,7 @@ SV* Sieve::ranged_primes( int lower, int upper )
 
 
 // Find the nearest prime less than or equal to n.  Very fast.
-unsigned int Sieve::nearest_le( int n )
+unsigned int _Sieve::nearest_le( int n )
 {
     // Remember that order of testing is significant; we have to
     // disqualify negative numbers before we do comparisons against
@@ -146,7 +147,7 @@ unsigned int Sieve::nearest_le( int n )
 
 
 // Find the nearest prime greater than or equal to n.  Very fast.
-unsigned int Sieve::nearest_ge( int n )
+unsigned int _Sieve::nearest_ge( int n )
 {
     // Order of bounds tests IS significant.
     // Because max_n is unsigned, testing "n > max_n" for values where
@@ -167,7 +168,7 @@ unsigned int Sieve::nearest_ge( int n )
 
 // Since we're only storing the sieve (not the primes list), this is a
 // linear time operation: O(n).
-unsigned int Sieve::nth_prime( int n )
+unsigned int _Sieve::nth_prime( int n )
 {
     if( n <  1     ) return 0; // Why would anyone want the 0th prime?
     if( n >  max_n ) return 0; // There can't be more primes than sieve.
@@ -184,7 +185,7 @@ unsigned int Sieve::nth_prime( int n )
 
 // Return the number of primes in the sieve.  Once results are
 // calculated, they're cached.  First time through is O(n).
-unsigned int Sieve::count_sieve ()
+unsigned int _Sieve::count_sieve ()
 {
     if( num_primes > 0 ) return num_primes;
     num_primes = this->count_le( max_n );
@@ -194,7 +195,7 @@ unsigned int Sieve::count_sieve ()
 
 // Return the number of primes less than or equal to n.  If n == max_n
 // the data member num_primes will be set.
-unsigned int Sieve::count_le( int n )
+unsigned int _Sieve::count_le( int n )
 {
     if( n <= 1 || n > max_n ) return 0;
     unsigned int count = 1;      // 2 is prime. Count it.
@@ -205,7 +206,7 @@ unsigned int Sieve::count_le( int n )
 }
 
 
-// ---------------- For export: Not part of Sieve class ----------------
+// ---------------- For export: Not part of _Sieve class ----------------
 
 /* Sieve of Eratosthenes.  Return a reference to an array containing all
  * prime numbers less than or equal to search_to.

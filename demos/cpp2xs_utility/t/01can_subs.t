@@ -16,7 +16,7 @@ my @object_methods = qw/
     count_sieve     count_le        nth_prime
 /;
 
-can_ok( 'Math::Prime::FastSieve::Sieve', @object_methods );
+can_ok( 'Math::Prime::FastSieve::_Sieve', @object_methods );
 
 
 done_testing();

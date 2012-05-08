@@ -1,3 +1,12 @@
+- 0.21 ... Add the capability of writing a portable Makefile.PL.
+
+           Add the capability of writing a MANIFEST file (that includes all of the
+           generated files).
+
+           Add 'DIST' config option.
+
+           Require Inline-0.50 and Inline-CPP-0.39. (Had been 0.45 and 0.25 respectively.)
+
 - 0.20 ... Fix LIBS setting. Was clobbering any value set by Inline::CPP::validate().
 
            Add the demos/cpp2xs_utility demo.
