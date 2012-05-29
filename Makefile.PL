@@ -18,12 +18,16 @@ close OUT or die "Can't close $file after writing: $!";
 
 chmod 0555, $file;
 
+my $twv = $] > 5.013 ? 0.23 : 0.21;
+$twv = 0.24 if $] > 5.015;
+
 my %options =
   (
   NAME     => 'InlineX::CPP2XS',
   PREREQ_PM => {
-                'Inline'  => 0.50,
+                'Inline'       => 0.50,
                 'Inline::CPP'  => 0.39,
+                'Test::warn'   => $twv,
                },
   VERSION_FROM => 'CPP2XS.pm',
 

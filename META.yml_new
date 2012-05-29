@@ -19,6 +19,6 @@ no_index:
     - inc
     - demos
 requires:
-  Inline: 0.45
-  Inline::CPP: 0.25
+  Inline: 0.50
+  Inline::CPP: 0.39
 version_from: CPP2XS.pm

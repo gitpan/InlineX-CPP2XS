@@ -3,9 +3,6 @@ use warnings;
 use strict;
 use InlineX::CPP2XS 'cpp2xs';
 
-# The bodgy ones are:
-# boot, use and prereq_pm.
-
 for(@ARGV) {
    if($_ =~ /\-\-help/i) {
       print "
@@ -54,8 +51,8 @@ Valid options are:
 --version=<value>      eg --version=0.42
 --write_pm=<value>     eg --write_pm=1 (Default is 0)
 --write_makefile_pl=<value> eg --write_makefile_pl=1 (Default is 0)
-                            For a portable Makefile.PL specify:
-                               --write_makefile_pl=p
+                            For a portable Makefile.PL and xs file
+                            specify --write_makefile_pl=p
 ";
       exit 0;
   }
@@ -72,7 +69,6 @@ die " A '--m=' argument (specifying the module name) must be provided on the\n",
 $argv =~ s/\-\-src=/\-\-src_location=/i;
 
 my @allow = @InlineX::CPP2XS::allowable_config_keys;
-#print "\@allow: @allow\n";
 
 for(@allow) {$_ = '--' . $_ .'='}
 push @allow, '--M=', '--P=', '--BD=';
@@ -80,8 +76,6 @@ push @allow, '--M=', '--P=', '--BD=';
 my @keys = $argv =~ /\-\-.+?=/g;
 my @vals = split /\-\-.+?=/, $argv;
 shift @vals;
-
-#for(@vals) {print "val: $_\n"}
 
 for(@keys) {
    die "$_ is not an allowable option"

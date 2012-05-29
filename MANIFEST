@@ -44,5 +44,9 @@ demos/cpp2xs_utility/t/00load.t
 demos/cpp2xs_utility/t/01can_subs.t
 demos/cpp2xs_utility/t/02exports.t
 demos/cpp2xs_utility/t/03sieve_object.t
+demos/cpp2xs_utility/mybuild/t/00load.t
+demos/cpp2xs_utility/mybuild/t/01can_subs.t
+demos/cpp2xs_utility/mybuild/t/02exports.t
+demos/cpp2xs_utility/mybuild/t/03sieve_object.t
 META.yml
 prereq_pm_test/exists

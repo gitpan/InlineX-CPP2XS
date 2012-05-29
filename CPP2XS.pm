@@ -8,7 +8,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw(cpp2xs);
 
-our $VERSION = '0.21';
+our $VERSION = '0.22';
 
 my $config_options;
 
@@ -299,7 +299,7 @@ sub cpp2xs {
     }
 
     if($config_options->{MANIF}) {
-      _write_manifest($modfname, $build_dir, $config_options);
+      _write_manifest($modfname, $build_dir, $config_options, $need_inline_h);
     }
 }
 
@@ -330,10 +330,11 @@ sub _build {
       $o->{ILSM}{AUTO_INCLUDE} = "\n#include \"icppdefines.h\"\n";;
     }
 
+    $Inline::CPP::Config::cpp_flavor_defs = ''; # Otherwise we find one more occurrence of
+                                                # $Inline::CPP::Config::cpp_flavor_defs in the generated XS
+                                                # file than we want.
     $o->call('write_XS', 'Build Glue 1');
     $o->{ILSM}{AUTO_INCLUDE} = $save if $portable;
-    remove_dup("$modfname.xs", $build_dir, $portable); # Removes duplicates of some defines
-                                                       # in the xs file.
 
     if($need_inline_headers) {
       print "Writing INLINE.h in the ", $o->{API}{build_dir}, " directory\n";
@@ -450,20 +451,23 @@ sub _write_pm {
 sub rewrite_makefile_pl {
     # This sub will get called if we want to write a portable Makefile.PL - ie iff
     # WRITE_MAKEFILE_PL is set to 'p' or 'P'.
-
+    # Lines starting with '>>' are heredoc entries. (All occurrences of '>>' are
+    # removed before the heredoc gets written to file.)
     my $bd = shift; # build directory
 
     die "Couldn't rename $bd/Makefile.PL"
       unless rename "$bd/Makefile.PL", "$bd/Makefile.PL_first";
 
     # Use the cpp test script from Inline::CPP
-    my $test_cpp = <<'TEST_CPP';
-#include <iostream>
-int main(){
-    return 0;
-}
+    my $test_cpp = <<'    TEST_CPP';
+>>#include <iostream>
+>>int main(){
+>>    return 0;
+>>}
+>>
+    TEST_CPP
 
-TEST_CPP
+    $test_cpp =~ s/>>//g;
 
     open WRT, '>', "$bd/ilcpptest.cpp" or die "Couldn't open $bd/ilcpptest.cpp for writing: $!";
     print WRT $test_cpp;
@@ -472,156 +476,149 @@ TEST_CPP
 
     open RD, '<', "$bd/Makefile.PL_first" or die "Couldn't open $bd/Makefile.PL_first for reading: $!";
     open WR, '>', "$bd/Makefile.PL" or die "Couldn't open Makefile.PL for writing: $!";
-    #########
 
     my @make = <RD>;
 
-####################################
-####################################
-####################################
+    my $insert = <<'    IN';
+>>
+>>    my ($cc_guess, $libs_guess) = _guess();
+>>
+>>    my $iostream = which_iostream($cc_guess);
+>>
+>>    my $standard;
+>>    if($iostream eq '<iostream>' ) {
+>>      $standard = <<'STD';
+>>
+>>#define __INLINE_CPP_STANDARD_HEADERS 1
+>>#define __INLINE_CPP_NAMESPACE_STD 1
+>>
+>>STD
+>>    }
+>>    else {$standard = ''}
+>>
+>>write_icppdefines_h($standard);
+>>
+>>sub _guess {
+>>
+>>    my $cc_guess;
+>>    my $libs_guess;
+>>
+>>    if($Config{osname} eq 'darwin'){
+>>      my $stdlib_query =
+>>        'find /usr/lib/gcc -name "libstdc++*" | grep $( uname -p )';
+>>      my $stdcpp =
+>>        `$stdlib_query`; + $stdcpp =~ s/^(.*)\/[^\/]+$/$1/;
+>>      $cc_guess   = 'g++';
+>>      $libs_guess = "-L$stdcpp -lstdc++";
+>>    }
+>>    elsif (
+>>      $Config{osname} ne 'darwin' and
+>>      $Config{gccversion} and
+>>      $Config{cc} =~ m#\bgcc\b[^/]*$# ) {
+>>      ($cc_guess  = $Config{cc}) =~ s[\bgcc\b([^/]*)$(?:)][g\+\+$1];
+>>      $libs_guess = '-lstdc++';
+>>    }
+>>    elsif ($Config{osname} =~ m/^MSWin/) {
+>>      $cc_guess   = 'cl -TP -EHsc';
+>>      $libs_guess = 'MSVCIRT.LIB';
+>>    }
+>>    elsif ($Config{osname} eq 'linux') {
+>>      $cc_guess   = 'g++';
+>>      $libs_guess = '-lstdc++';
+>>    }
+>>    # Dragonfly patch is just a hunch...
+>>    elsif( $Config{osname} eq 'netbsd' || $Config{osname} eq 'dragonfly' ) {
+>>      $cc_guess   = 'g++';
+>>      $libs_guess = '-lstdc++ -lgcc_s';
+>>    }
+>>    elsif ($Config{osname} eq 'cygwin') {
+>>      $cc_guess   = 'g++';
+>>      $libs_guess = '-lstdc++';
+>>    }
+>>    elsif ($Config{osname} eq 'solaris' or $Config{osname} eq 'SunOS') {
+>>      if(
+>>        $Config{cc} eq 'gcc' ||( exists( $Config{gccversion} ) && $Config{gccversion} > 0)) {
+>>        $cc_guess   = 'g++';
+>>        $libs_guess = '-lstdc++';
+>>      }
+>>      else {
+>>        $cc_guess   = 'CC';
+>>        $libs_guess ='-lCrun';
+>>      }
+>>    }
+>>    elsif ($Config{osname} eq 'mirbsd') {
+>>      my $stdlib_query =
+>>        'find /usr/lib/gcc -name "libstdc++*" | grep $( uname -p ) | head -1';
+>>      my $stdcpp =
+>>        `$stdlib_query`; + $stdcpp =~ s/^(.*)\/[^\/]+$/$1/;
+>>      $cc_guess   = 'g++';
+>>      $libs_guess = "-L$stdcpp -lstdc++ -lc -lgcc_s";
+>>    }
+>>    # Sane defaults for other (probably unix-like) operating systems
+>>    else {
+>>      $cc_guess   = 'g++';
+>>      $libs_guess = '-lstdc++';
+>>    }
+>>
+>>    return ($cc_guess, $libs_guess);
+>>}
+>>
+>>sub which_iostream {
+>>
+>>    my $cpp_compiler = shift;
+>>
+>>    my $result;
+>>    if( $cpp_compiler =~ m/^cl/ ) {
+>>      $result = system(
+>>        qq{$cpp_compiler -Fe:ilcpptest.exe } .
+>>        qq{ilcpptest.cpp}
+>>      );
+>>    }
+>>    else {
+>>      $result = system(
+>>        qq{$cpp_compiler -o ilcpptest.exe } .
+>>        qq{ilcpptest.cpp}
+>>      );
+>>    }
+>>
+>>    if( $result != 0 ) {
+>>      # Compiling with <iostream> failed, so we'll assume .h headers.
+>>      $result = '<iostream.h>';
+>>    }
+>>    else {
+>>      # Compiling with <iostream> succeeded.
+>>      $result = '<iostream>';
+>>      unlink "ilcpptest.exe" or warn $!; # Unlink the executable.
+>>    }
+>>    return $result;
+>>}
+>>
+>>sub write_icppdefines_h {
+>>
+>>    my $standard = shift;
+>>
+>>    open RDA, '<', 'auto_include.in' or die "Couldn't open auto_include.in for reading: $!";
+>>    my @auto = <RDA>;
+>>    close RDA or die "Couldn't close auto_include.in after reading: $!";
+>>
+>>    my $auto = join '', @auto;
+>>
+>>    if($standard) {$auto =~ s/<iostream.h>/<iostream>/g}
+>>    else {$auto =~ s/<iostream>/<iostream.h>/g}
+>>
+>>    open WRXS, '>', "icppdefines.h" or die "Couldn't open icppdefines.h for writing: $!";
+>>
+>>    print WRXS "\n/* This file generated by the Makefile.PL */\n\n";
+>>    print WRXS $standard;
+>>    print WRXS $auto; 
+>>
+>>    close WRXS or die "Couldn't close icppdefines.h: $!";
+>>
+>>}
+>>
+    IN
 
-    my $insert = <<'IN';
-
-    my ($cc_guess, $libs_guess) = _guess();
-
-    my $iostream = which_iostream($cc_guess);
-
-    my $standard;
-    if($iostream eq '<iostream>' ) {
-      $standard = <<'STD';
-
-#define __INLINE_CPP_STANDARD_HEADERS 1
-#define __INLINE_CPP_NAMESPACE_STD 1
-
-STD
-    }
-    else {$standard = ''}
-
-write_icppdefines_h($standard);
-
-sub _guess {
-
-    my $cc_guess;
-    my $libs_guess;
-
-    if($Config{osname} eq 'darwin'){
-      my $stdlib_query =
-        'find /usr/lib/gcc -name "libstdc++*" | grep $( uname -p )';
-      my $stdcpp =
-        `$stdlib_query`; + $stdcpp =~ s/^(.*)\/[^\/]+$/$1/;
-      $cc_guess   = 'g++';
-      $libs_guess = "-L$stdcpp -lstdc++";
-    }
-    elsif (
-      $Config{osname} ne 'darwin' and
-      $Config{gccversion} and
-      $Config{cc} =~ m#\bgcc\b[^/]*$# ) {
-      ($cc_guess  = $Config{cc}) =~ s[\bgcc\b([^/]*)$(?:)][g\+\+$1];
-      $libs_guess = '-lstdc++';
-    }
-    elsif ($Config{osname} =~ m/^MSWin/) {
-      $cc_guess   = 'cl -TP -EHsc';
-      $libs_guess = 'MSVCIRT.LIB';
-    }
-    elsif ($Config{osname} eq 'linux') {
-      $cc_guess   = 'g++';
-      $libs_guess = '-lstdc++';
-    }
-    # Dragonfly patch is just a hunch...
-    elsif( $Config{osname} eq 'netbsd' || $Config{osname} eq 'dragonfly' ) {
-      $cc_guess   = 'g++';
-      $libs_guess = '-lstdc++ -lgcc_s';
-    }
-    elsif ($Config{osname} eq 'cygwin') {
-      $cc_guess   = 'g++';
-      $libs_guess = '-lstdc++';
-    }
-    elsif ($Config{osname} eq 'solaris' or $Config{osname} eq 'SunOS') {
-      if(
-        $Config{cc} eq 'gcc' ||( exists( $Config{gccversion} ) && $Config{gccversion} > 0)) {
-        $cc_guess   = 'g++';
-        $libs_guess = '-lstdc++';
-      }
-      else {
-        $cc_guess   = 'CC';
-        $libs_guess ='-lCrun';
-      }
-    }
-    elsif ($Config{osname} eq 'mirbsd') {
-      my $stdlib_query =
-        'find /usr/lib/gcc -name "libstdc++*" | grep $( uname -p ) | head -1';
-      my $stdcpp =
-        `$stdlib_query`; + $stdcpp =~ s/^(.*)\/[^\/]+$/$1/;
-      $cc_guess   = 'g++';
-      $libs_guess = "-L$stdcpp -lstdc++ -lc -lgcc_s";
-    }
-    # Sane defaults for other (probably unix-like) operating systems
-    else {
-      $cc_guess   = 'g++';
-      $libs_guess = '-lstdc++';
-    }
-
-    return ($cc_guess, $libs_guess);
-}
-
-sub which_iostream {
-
-    my $cpp_compiler = shift;
-
-    my $result;
-    if( $cpp_compiler =~ m/^cl/ ) {
-      $result = system(
-        qq{$cpp_compiler -Fe:ilcpptest.exe } .
-        qq{ilcpptest.cpp}
-      );
-    }
-    else {
-      $result = system(
-        qq{$cpp_compiler -o ilcpptest.exe } .
-        qq{ilcpptest.cpp}
-      );
-    }
-
-    if( $result != 0 ) {
-      # Compiling with <iostream> failed, so we'll assume .h headers.
-      $result = '<iostream.h>';
-    }
-    else {
-      # Compiling with <iostream> succeeded.
-      $result = '<iostream>';
-      unlink "ilcpptest.exe" or warn $!; # Unlink the executable.
-    }
-    return $result;
-}
-
-sub write_icppdefines_h {
-
-    my $standard = shift;
-
-    open RDA, '<', 'auto_include.in' or die "Couldn't open auto_include.in for reading: $!";
-    my @auto = <RDA>;
-    close RDA or die "Couldn't close auto_include.in after reading: $!";
-
-    my $auto = join '', @auto;
-
-    if($standard) {$auto =~ s/<iostream.h>/<iostream>/g}
-    else {$auto =~ s/<iostream>/<iostream.h>/g}
-
-    open WRXS, '>', "icppdefines.h" or die "Couldn't open icppdefines.h for writing: $!";
-
-    print WRXS "\n/* This file generated by the Makefile.PL */\n\n";
-    print WRXS $standard;
-    print WRXS $auto; 
-
-    close WRXS or die "Couldn't close icppdefines.h: $!";
-
-}
-
-IN
-
-####################################
-####################################
-####################################
+    $insert =~ s/>>//g;
 
     $make[0] .= $insert;
     for(@make) {
@@ -633,7 +630,7 @@ IN
       }
       if($_ =~ /'CC' =>/) {$_ = '  \'CC\' => "$cc_guess",' . "\n"}
     }
-    #########
+
     for(@make) {print WR $_}
     close RD or die "Couldn't close $bd/Makefile.PL_first: $!";
     close WR or die "Couldn't close $bd/Makefile.PL: $!";
@@ -642,53 +639,18 @@ IN
 
 ##=========================##
 
-sub remove_dup {
-
-    my $xs = shift;
-    my $bd = shift;
-    my $portable = shift;
-
-    open RDS, '<', "$bd/$xs" or die "Can't open $bd/$xs for reading: $!";
-    my(@lines) = <RDS>;
-    close RDS or die "Can't close $bd/$xs after reading: $!";
-    if($portable) { # Remove all occurrences
-      for my $l(@lines) {
-        last if $l =~ /^#include "EXTERN.h"/;
-        $l = '' if($l =~ /^#define __INLINE_CPP_STANDARD_HEADERS 1\s/ || $l =~ /^#define __INLINE_CPP_NAMESPACE_STD 1\s/);
-      }
-    }
-    else { # Leave the first occurrence intact - remove all subsequent occurrences
-      my($found1, $found2) = (0, 0);
-      for my $l(@lines) {
-        last if $l =~ /^#include "EXTERN.h"/;
-        if($l =~ /^#define __INLINE_CPP_STANDARD_HEADERS 1\s/) {
-          $l = '' unless $found1;
-          $found1 = 1;
-        }
-        if($l =~ /^#define __INLINE_CPP_NAMESPACE_STD 1\s/) {
-          $l = '' unless $found2;
-          $found2 = 1;
-        }
-      }
-    }
-    open WRS, '>', "$bd/$xs" or die "Can't open $bd/$xs for writing: $!";
-    for my $p(@lines) {print WRS $p}
-    close WRS or die "Can't close $bd/$xs after writing: $!";
- 
-}
-
-##=========================##
-
 sub _write_manifest {
-    my $m = shift;
+    my $m = shift;  # name of pm and xs files
     my $bd = shift; # build directory
     my $c = shift;  # config options
+    my $ih = shift; # INLINE.h required ?
 
     print "Writing the MANIFEST file in the $bd directory\n";
 
     open WRM, '>', "$bd/MANIFEST" or die "Can't open MANIFEST for writing: $!";
     print WRM "MANIFEST\n";
     if($c->{WRITE_PM}) {print WRM "$m.pm\n"}
+    if($ih) {print WRM "INLINE.h\n"}
     print WRM "$m.xs\nCPP.map\n";
     if($c->{WRITE_MAKEFILE_PL}) {
       print WRM "Makefile.PL\n";
@@ -927,7 +889,8 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
    In the generated .pm file, creates an EXPORT_TAGS tag named 'name'
    (where 'name' is whatever you have specified), and places all XSubs except
    those beginning with a *single* underscore (but not multiple underscores)
-   in 'name'. eg, the following creates and fills a tag named 'all':
+   in 'name'. Also places same subs in @EXPORT_OK.
+   eg, the following creates and fills a tag named 'all':
 
     EXPORT_TAGS_ALL => 'all',
   ----
@@ -1009,6 +972,11 @@ InlineX::CPP2XS - Convert from Inline C++ code to XS.
    else that might have been added to AUTO_INCLUDE by the user). If the
    specified value identifies a file, the contents of that file will be
    inserted, otherwise the specified value is inserted.
+   If the specified value is code, then since that code contains a "\n"
+   (as all code *should* terminate with at least one "\n"), you will get
+   a warning about an "Unsuccessful stat on filename containing newline"
+   when the test for the existence of a file that matches the PRE_HEAD
+   value is conducted.   
 
     PRE_HEAD => $code_or_filename;
   ----

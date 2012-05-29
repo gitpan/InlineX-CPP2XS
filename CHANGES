@@ -1,3 +1,5 @@
+- 0.22 ... Remove remove_dup function. (Simpler to override $Inline::CPP::Config::flavor_defs.)
+
 - 0.21 ... Add the capability of writing a portable Makefile.PL.
 
            Add the capability of writing a MANIFEST file (that includes all of the

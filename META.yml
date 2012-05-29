@@ -4,7 +4,7 @@ name:         InlineX-CPP2XS
 version_from: CPP2XS.pm
 installdirs:  site
 requires:
-    Inline::CPP:                   0.25
+    Inline::CPP:                   0.39
 
 no_index:
   directory:
