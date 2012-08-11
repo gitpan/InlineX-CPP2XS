@@ -217,9 +217,9 @@ if($ok eq 'a') {
   $ok .= 'g' if $pm[5] eq "*import = \\&Exporter::import;\n";
   $ok .= 'h' if $pm[6] eq "require DynaLoader;\n";
   $ok .= 'i' if $pm[7] eq "\n";
-  $ok .= 'j' if $pm[8] eq "\$test::VERSION = '0.42';\n";
-  $ok .= 'k' if $pm[9] eq "\n";
-  $ok .= 'l' if $pm[10] eq "DynaLoader::bootstrap test \$test::VERSION;\n";
+  $ok .= 'j' if $pm[8] eq "our \$VERSION = '0.42';\n";
+  $ok .= 'k' if $pm[9] eq "\$VERSION = eval \$VERSION;\n";
+  $ok .= 'l' if $pm[10] eq "DynaLoader::bootstrap test \$VERSION;\n";
   $ok .= 'm' if $pm[11] eq "\n";
   $ok .= 'n' if $pm[12] eq "\@test::EXPORT = ();\n";
   $ok .= 'o' if $pm[13] eq "\@test::EXPORT_OK = ();\n";

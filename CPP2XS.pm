@@ -8,7 +8,8 @@ our @ISA = qw(Exporter);
 
 our @EXPORT_OK = qw(cpp2xs);
 
-our $VERSION = '0.22';
+our $VERSION = '0.23';
+$VERSION = eval $VERSION;
 
 my $config_options;
 
@@ -378,8 +379,9 @@ sub _write_pm {
     }
     print WR "\n";
     print WR "require Exporter;\n*import = \\&Exporter::import;\nrequire DynaLoader;\n\n";
-    print WR "\$", $o->{API}{module}, "::VERSION = '", $o->{API}{version}, "';\n\n"; 
-    print WR "DynaLoader::bootstrap ", $o->{API}{module}, " \$", $o->{API}{module}, "::VERSION;\n\n";
+    print WR "our \$VERSION = '", $o->{API}{version}, "';\n";
+    print WR "\$VERSION = eval \$VERSION;\n"; 
+    print WR "DynaLoader::bootstrap ", $o->{API}{module}, " \$VERSION;\n\n";
 
     unless($config_options->{EXPORT_ALL}) {
       print WR "\@", $o->{API}{module}, "::EXPORT = ();\n";

@@ -27,7 +27,7 @@ my %options =
   PREREQ_PM => {
                 'Inline'       => 0.50,
                 'Inline::CPP'  => 0.39,
-                'Test::warn'   => $twv,
+                'Test::Warn'   => $twv,
                },
   VERSION_FROM => 'CPP2XS.pm',
 

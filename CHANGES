@@ -1,3 +1,6 @@
+- 0.23 ... "eval $VERSION;" in the created PM file - as per current recommendations
+           Fix typo in Makefile.PL. (Change "Test::warn" to "Test::Warn".) Thanks Davido.
+
 - 0.22 ... Remove remove_dup function. (Simpler to override $Inline::CPP::Config::flavor_defs.)
 
 - 0.21 ... Add the capability of writing a portable Makefile.PL.
