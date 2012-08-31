@@ -25,7 +25,7 @@ open RD, '<', $xs or die "Can't open $xs for reading: $!";
 
 while(<RD>) {
   if($_ =~ /EXTERN\.h/) { $seen_headers++ }
-  if($_ =~ /__INLINE_CPP/) { $seen_defined++ }
+  if($_ =~ /__INLINE_CPP_/) { $seen_defined++ }
   if($_ =~ /MUMBO_JUMBO/) {
     $seen_target++;
     if($seen_headers || $seen_defined) {
@@ -57,7 +57,7 @@ open RD2, '<', $xs or die "Can't open $xs for reading: $!";
 
 while(<RD2>) {
   if($_ =~ /EXTERN\.h/) { $seen_headers++ }
-  if($_ =~ /__INLINE_CPP/) { $seen_defined++ }
+  if($_ =~ /__INLINE_CPP_/) { $seen_defined++ }
   if($_ =~ /SOMETHING_ELSE/) {
     $seen_target++;
     if($seen_headers || $seen_defined) {

@@ -106,7 +106,7 @@ if(-f "$bd/FastSieve.xs") {
 }
 else {print "not ok 20\n"}
 
-### check that FastSieve.xs is not much smaller than it should be, and that it does not match /__INLINE_CPP/
+### check that FastSieve.xs is not much smaller than it should be, and that it does not match /__INLINE_CPP_/
 if($exs) {
   open RDXS, '<', "$bd/FastSieve.xs" or die "Couldn't open $bd/FastSieve.xs for reading: $!";
   my @rdxs = <RDXS>;
@@ -117,7 +117,7 @@ if($exs) {
   }
   else {print "ok 21\n"}
   my $ok = 1;
-  for(@rdxs) {$ok = 0 if $_ =~ /__INLINE_CPP/}
+  for(@rdxs) {$ok = 0 if $_ =~ /__INLINE_CPP_/}
   if($ok) {print "ok 22\n"}
   else {print "not ok 22\n"}
 }
@@ -141,7 +141,7 @@ if(-f "$bd/auto_include.in") {
 }
 else {print "not ok 24\n"}
 
-### check that auto_include.in is not much smaller than it should be, and that it does not match /__INLINE_CPP/
+### check that auto_include.in is not much smaller than it should be, and that it does not match /__INLINE_CPP_/
 if($eauto) {
   open RDAUTO, '<', "$bd/auto_include.in" or die "Couldn't open $bd/auto_include.in for reading: $!";
   my @rdauto = <RDAUTO>;
@@ -155,7 +155,7 @@ if($eauto) {
   }
   my $ok = 1;
   for(@rdauto) {
-    if($_ =~ /__INLINE_CPP/) {$ok = 0}
+    if($_ =~ /__INLINE_CPP_/) {$ok = 0}
   }
   if($ok) {print "ok 26\n"}
   else {print "not ok 26\n"}
@@ -380,8 +380,8 @@ if(-f "$bd/FastSieve.xs") {
 }
 else {print "not ok 53\n"}
 
-### Check that FastSieve.xs is not much smaller than expected, and that it matches /__Inline_CPP/ iff
-### $Inline::CPP::Config::cpp_flavor_defs matches /_Inline_CPP/.
+### Check that FastSieve.xs is not much smaller than expected, and that it matches /__INLINE_CPP_/ iff
+### $Inline::CPP::Config::cpp_flavor_defs matches /_Inline_CPP_/.
 if($exs) {
   open RDXS, '<', "$bd/FastSieve.xs" or die "Couldn't open $bd/FastSieve.xs for reading: $!";
   my @rdxs = <RDXS>;
@@ -393,15 +393,15 @@ if($exs) {
   else {print "ok 54\n"}
   my $ok = $Inline::CPP::Config::cpp_flavor_defs;
   $ok = 0;
-  if($Inline::CPP::Config::cpp_flavor_defs =~ /__INLINE_CPP/) {
+  if($Inline::CPP::Config::cpp_flavor_defs =~ /__INLINE_CPP_/) {
     for(@rdxs) {
-      $ok = 1 if $_ =~ /__INLINE_CPP/;
+      $ok = 1 if $_ =~ /__INLINE_CPP_/;
     }
   }
   else {
     $ok = 1;
     for(@rdxs) {
-      $ok = 0 if $_ =~ /__INLINE_CPP/;
+      $ok = 0 if $_ =~ /__INLINE_CPP_/;
     }
   }
 
